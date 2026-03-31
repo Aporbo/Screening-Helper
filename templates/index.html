@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unite Us Tools</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+</head>
+<style>
+
+.note-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: white;
+  border-radius: 10px;
+  font-size: 0.87rem;
+  font-weight: 500;
+  padding: 2px 6px;
+  cursor: pointer;
+  margin-left: 4px;
+  vertical-align: middle;
+  font-family: inherit;
+  transition: var(--transition);
+}
+.note-btn:hover { background: var(--amber-light); border-color: #FDE68A; color: #2aad0a; }
+.note-btn.has-note { background: var(--amber-light); border-color: #FDE68A; color: #2aad0a; }
+
+.note-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15,23,42,0.3);
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.15s ease;
+}
+.note-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  width: 360px;
+  box-shadow: var(--shadow-lg);
+  animation: slideIn 0.18s cubic-bezier(0.4,0,0.2,1);
+}
+.note-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.note-box-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+  flex: 1;
+  padding-right: 10px;
+}
+.note-box-close {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: var(--text-3);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+.note-box-close:hover { background: var(--surface-2); color: var(--text); }
+.note-textarea {
+  width: 100%;
+  height: 100px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  color: var(--text);
+  background: var(--surface);
+  line-height: 1.5;
+  transition: var(--transition);
+}
+.note-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(61,90,254,0.1); }
+.note-word-count {
+  font-size: 0.73rem;
+  color: var(--text-3);
+  margin-top: 5px;
+  text-align: right;
+}
+.note-word-count.over { color: var(--danger); font-weight: 600; }
+.note-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.note-save {
+  flex: 1;
+  padding: 9px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: var(--transition);
+}
+.note-save:hover { background: #2947e8; }
+.note-save:disabled { background: var(--border-strong); color: var(--text-3); cursor: not-allowed; }
+.note-delete {
+  padding: 9px 14px;
+  background: var(--danger-light);
+  color: var(--danger);
+  border: 1px solid #FECACA;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: var(--transition);
+}
+.note-delete:hover { background: #FEE2E2; }
+
+.note-text {
+  grid-column: 1 / -1;
+  margin: 2px 0 6px 0;
+  padding: 6px 10px;
+  background: var(--amber-light);
+  border-left: 3px solid var(--amber);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 0.78rem;
+  color: #2aad0a;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+  .scroll-top-btn {
+  position: fixed;
+  bottom: 28px;
+  /* Swapped left for right */
+  right: 28px; 
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  /* Starts slightly lower for a "pop-in" effect */
+  transform: translateY(20px) scale(0.8); 
+  /* Added cubic-bezier for a more professional feel */
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+  z-index: 150;
+}
+
+.scroll-top-btn.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+/* Enhanced Hover Animation */
+.scroll-top-btn:hover {
+  background: #2947e8;
+  /* Lifts up and grows slightly */
+  transform: translateY(-5px) scale(1.1);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+
+/* Active "Click" Animation */
+.scroll-top-btn:active {
+  transform: translateY(-2px) scale(0.95);
+}
+</style>
+<body>
+<div class="bg-canvas">
+  <div class="bg-waves"></div>
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+  <div class="bg-orb orb-3"></div>
+  <div class="bg-orb orb-4"></div>
+  <div class="bg-orb orb-5"></div>
+  <div class="bg-particles"></div>
+</div>
+<!-- ── Header ── -->
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon">U</div>
+      <span class="logo-text">Unite<span>Us</span> Tools</span>
+    </div>
+    <div class="header-sep"></div>
+    <div class="header-right">
+      <button class="nav-pill" onclick="openHistory()" id="history-btn">
+        <span class="nav-icon">🕐</span> History
+        <span class="history-badge" id="history-badge">0</span>
+      </button>
+      <button class="nav-pill" onclick="openSettings()">
+        <span class="nav-icon">⚙️</span> Settings
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ── Status bar ── -->
+<div class="status-bar">
+  <div class="status-pill idle" id="status-bar">
+    <span id="status-icon">●</span>
+    <span id="status-text">Waiting for search...</span>
+    <span class="eta-text" id="eta-timer"></span>
+  </div>
+</div>
+
+<!-- ── Main ── -->
+<div class="container">
+
+  <!-- Search -->
+  <div class="search-row">
+    <div class="search-wrap">
+      <span class="search-icon">🔎</span>
+      <input type="text" id="scan-input" placeholder="Enter a surname to scan all profiles — e.g. Basnet, Singh, Torres..." />
+    </div>
+    <button class="btn-primary" id="scan-btn" onclick="startScan()">Scan Profiles</button>
+    <button class="btn-stop" id="stop-btn" onclick="stopSearch()">⛔ Stop</button>
+  </div>
+
+  <!-- Metric cards -->
+  <div class="cards">
+    <div class="card">
+      <div class="card-icon">👥</div>
+      <div class="card-num" id="s-total">—</div>
+      <div class="card-lbl">Total Profiles</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">👨‍👩‍👧</div>
+      <div class="card-num" id="s-families">—</div>
+      <div class="card-lbl">Family Groups</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔔</div>
+      <div class="card-num" id="s-enrolled">—</div>
+      <div class="card-lbl">Enrolled &amp; 0 Screenings</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">⚠️</div>
+      <div class="card-num red" id="s-failed">—</div>
+      <div class="card-lbl">Failed</div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-wrap" id="prog-wrap">
+    <div class="progress-header">
+      <div class="progress-lbl" id="prog-lbl">Scanning profiles...</div>
+      <div class="progress-pct" id="prog-pct">0%</div>
+    </div>
+    <div class="progress-bg"><div class="progress-bar" id="prog-bar"></div></div>
+  </div>
+
+  <!-- Filters -->
+  <div id="filter-area">
+    <div class="filter-bar">
+      <button class="filter-btn active" onclick="setFilter('need_screening', this)">🔔 Need Screening</button>
+      <button class="filter-btn" onclick="setFilter('all', this)">All</button>
+      <input class="filter-search" type="text" id="name-search" placeholder="Search name..." oninput="renderResults()" />
+      <input class="filter-search" type="text" id="number-search" placeholder="Search phone..." oninput="renderResults()" />
+      <button class="filter-btn" onclick="setFilter('family', this)">Family Groups</button>
+      <button class="filter-btn" onclick="setFilter('enrolled', this)">Enrolled</button>
+      <button class="filter-btn" onclick="setFilter('not_enrolled', this)">Not Enrolled</button>
+      <button class="filter-btn" onclick="setFilter('zero_screen', this)">No Screenings</button>
+      <button class="filter-btn" onclick="setFilter('has_screen', this)">Has Screenings</button>
+      
+      <span class="filter-count" id="filter-count"></span>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results">
+    <div class="empty-state">
+      <div class="empty-icon">🔎</div>
+      <p>Enter a surname above to scan all matching profiles.<br>Family members sharing a phone number will be grouped and checked first.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── History Panel ── -->
+<div class="panel-overlay" id="history-overlay" onclick="closeHistory()"></div>
+<div class="side-panel" id="history-panel">
+  <div class="panel-header">
+    <div>
+      <div class="panel-title">🕐 Search History</div>
+      <div class="panel-subtitle">Last 48 hours</div>
+    </div>
+    <button class="panel-close" onclick="closeHistory()">✕</button>
+  </div>
+  <div class="panel-body" id="history-body">
+    <div class="history-empty">No searches yet.</div>
+  </div>
+</div>
+
+<!-- ── Settings Panel ── -->
+<div class="panel-overlay" id="settings-overlay" onclick="closeSettings()"></div>
+<div class="side-panel" id="settings-panel">
+  <div class="panel-header">
+    <div>
+      <div class="panel-title">⚙️ Settings</div>
+      <div class="panel-subtitle">Credentials &amp; cache</div>
+    </div>
+    <button class="panel-close" onclick="closeSettings()">✕</button>
+  </div>
+  <div class="panel-body">
+    <div class="section-lbl">Credentials</div>
+    <div class="form-group">
+      <label>Unite Us Email</label>
+      <input type="email" id="cred-email" placeholder="your@email.com" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="cred-password" placeholder="••••••••" />
+    </div>
+    <button class="btn-save-full" onclick="saveCredentials()">Save &amp; Reconnect</button>
+    <div class="save-msg" id="save-msg">✅ Saved! Reconnecting...</div>
+    <hr class="divider">
+    <div class="section-lbl">Cache</div>
+    <p style="font-size:0.82rem;color:var(--text-2);margin-bottom:14px;line-height:1.6">Cached results load instantly without re-scanning Unite Us.</p>
+    <button class="danger-btn" onclick="clearCache()">🗑 Clear All Cached Results</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let polling = null;
+  let currentFilter = 'need_screening';
+  let currentData = null;
+  let scanStartTime = null;
+  let timerInterval = null;
+  let lastEstimate = null;
+  let lastEstimateTime = null;
+
+  // ── ETA Timer ──
+  function startETA() {
+    scanStartTime = Date.now();
+    lastEstimate = null; lastEstimateTime = null;
+    document.getElementById('eta-timer').textContent = '· Estimating...';
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(tickETA, 1000);
+  }
+  function tickETA() {
+    if (lastEstimate === null || lastEstimateTime === null) { document.getElementById('eta-timer').textContent = '· Estimating...'; return; }
+    const elapsed = (Date.now() - lastEstimateTime) / 1000;
+    const remaining = Math.max(0, Math.round(lastEstimate - elapsed));
+    document.getElementById('eta-timer').textContent = '· ' + formatETA(remaining);
+  }
+  function updateETAEstimate(scanned, total) {
+    if (!scanStartTime || scanned === 0) return;
+    const elapsed = (Date.now() - scanStartTime) / 1000;
+    const perProfile = elapsed / scanned;
+    lastEstimate = Math.round(perProfile * (total - scanned));
+    lastEstimateTime = Date.now();
+  }
+  function formatETA(secs) {
+    if (secs <= 0) return 'Almost done...';
+    const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = secs % 60;
+    if (h > 0) return `~${h}h ${m}m remaining`;
+    if (m > 0) return `~${m}m ${s}s remaining`;
+    return `~${s}s remaining`;
+  }
+  function stopETA(done) {
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    document.getElementById('eta-timer').textContent = done ? '· Complete' : '';
+    setTimeout(() => document.getElementById('eta-timer').textContent = '', 3000);
+  }
+
+  // ── Toast ──
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // ── Copy ──
+  function copyText(text, label) {
+    navigator.clipboard.writeText(text).then(() => showToast('Copied ' + label + ': ' + text));
+  }
+  function copyPhone(raw) {
+    let d = raw.replace(/[^0-9]/g, '');
+    if (d.length === 11 && d.startsWith('1')) d = d.slice(1);
+    if (d.length !== 10) { copyText(raw, 'phone'); return; }
+    const fmt = '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6);
+    copyText(fmt, 'phone');
+  }
+
+  // ── Filter ──
+  function setFilter(f, btn) {
+    currentFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderResults();
+  }
+
+  // ── History ──
+  function openHistory() {
+    fetch('/history').then(r => r.json()).then(data => {
+      const body = document.getElementById('history-body');
+      if (!data.history || data.history.length === 0) {
+        body.innerHTML = '<div class="history-empty">No searches in the last 48 hours.</div>';
+      } else {
+        let html = '';
+        for (const h of data.history) {
+          html += `<div class="history-item">
+            <div class="history-surname">
+              ${h.surname.toUpperCase()}
+              <button class="history-rescan" onclick="rescan('${h.surname}')">↻ Rescan</button>
+            </div>
+            <div class="history-time">🕐 ${h.time_str}</div>
+            <div class="history-stats">
+              <span class="h-stat">${h.total} profiles</span>
+              <span class="h-stat">${h.families} families</span>
+              <span class="h-stat green">${h.enrolled} need screening</span>
+              ${h.failed > 0 ? `<span class="h-stat red">${h.failed} failed</span>` : ''}
+            </div>
+          </div>`;
+        }
+        body.innerHTML = html;
+      }
+    });
+    document.getElementById('history-panel').classList.add('open');
+    document.getElementById('history-overlay').classList.add('open');
+  }
+  function closeHistory() {
+    document.getElementById('history-panel').classList.remove('open');
+    document.getElementById('history-overlay').classList.remove('open');
+  }
+  function rescan(surname) {
+    closeHistory();
+    document.getElementById('scan-input').value = surname;
+    startScan();
+  }
+
+  // ── Settings ──
+  function openSettings() {
+    fetch('/creds').then(r => r.json()).then(d => {
+      document.getElementById('cred-email').value = d.email || '';
+      document.getElementById('cred-password').value = '';
+    });
+    document.getElementById('settings-panel').classList.add('open');
+    document.getElementById('settings-overlay').classList.add('open');
+  }
+  function closeSettings() {
+    document.getElementById('settings-panel').classList.remove('open');
+    document.getElementById('settings-overlay').classList.remove('open');
+  }
+  async function saveCredentials() {
+    const email = document.getElementById('cred-email').value.trim();
+    const password = document.getElementById('cred-password').value.trim();
+    if (!email || !password) { showToast('Enter both fields'); return; }
+    await fetch('/save-creds?email=' + encodeURIComponent(email) + '&password=' + encodeURIComponent(password));
+    document.getElementById('save-msg').style.display = 'block';
+    setTimeout(() => { document.getElementById('save-msg').style.display = 'none'; closeSettings(); }, 2000);
+  }
+  async function clearCache() {
+    await fetch('/clear-cache');
+    showToast('Cache cleared');
+    closeSettings();
+  }
+
+  // ── Stop ──
+  async function stopSearch() {
+    await fetch('/stop');
+    document.getElementById('stop-btn').style.display = 'none';
+    document.getElementById('scan-btn').disabled = false;
+    document.getElementById('prog-wrap').style.display = 'none';
+    stopETA(false);
+    showToast('Search stopped');
+  }
+
+  // ── Start scan ──
+  async function startScan() {
+    const s = document.getElementById('scan-input').value.trim();
+    if (!s) return;
+    scanStartTime = null; lastEstimate = null; lastEstimateTime = null;
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    document.getElementById('eta-timer').textContent = '';
+    document.getElementById('scan-btn').disabled = true;
+    document.getElementById('stop-btn').style.display = 'inline-block';
+    document.getElementById('prog-wrap').style.display = 'block';
+    document.getElementById('filter-area').style.display = 'none';
+    document.getElementById('results').innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Collecting profiles from Unite Us...</p></div>';
+    ['s-total','s-families','s-enrolled','s-failed'].forEach(id => document.getElementById(id).textContent = '—');
+    await fetch('/scan?q=' + encodeURIComponent(s));
+    if (polling) clearInterval(polling);
+    polling = setInterval(fetchResults, 2500);
+    fetchResults();
+  }
+
+  // ── Main fetch ──
+  async function fetchResults() {
+    try {
+      const res = await fetch('/data');
+      const data = await res.json();
+      const pill = document.getElementById('status-bar');
+      document.getElementById('status-text').textContent = data.status;
+
+      if (data.searching) {
+        pill.className = 'status-pill searching';
+        document.getElementById('status-icon').outerHTML = '<span id="status-icon" class="spinner"></span>';
+        document.getElementById('stop-btn').style.display = 'inline-block';
+        document.getElementById('scan-btn').disabled = true;
+        if (data.scan && data.scan.total && data.scan.scanned > 0) {
+          if (!timerInterval) startETA();
+          updateETAEstimate(data.scan.scanned, data.scan.total);
+        }
+      } else if (data.status.includes('Stopped')) {
+        pill.className = 'status-pill stopped';
+        document.getElementById('status-icon').outerHTML = '<span id="status-icon">⛔</span>';
+        document.getElementById('scan-btn').disabled = false;
+        document.getElementById('stop-btn').style.display = 'none';
+        document.getElementById('prog-wrap').style.display = 'none';
+        stopETA(false);
+        if (polling) { clearInterval(polling); polling = null; }
+      } else if (data.status.includes('Done') || data.status.includes('Waiting')) {
+        pill.className = data.status.includes('Done') ? 'status-pill done' : 'status-pill idle';
+        document.getElementById('status-icon').outerHTML = data.status.includes('Done') ? '<span id="status-icon">✓</span>' : '<span id="status-icon">●</span>';
+        document.getElementById('scan-btn').disabled = false;
+        document.getElementById('stop-btn').style.display = 'none';
+        if (data.status.includes('Done')) { document.getElementById('prog-wrap').style.display = 'none'; stopETA(true); }
+        if (polling) { clearInterval(polling); polling = null; }
+      } else {
+        pill.className = 'status-pill idle';
+        document.getElementById('status-icon').outerHTML = '<span id="status-icon">●</span>';
+      }
+
+      if (!data.scan || !data.scan.profiles) return;
+      currentData = data.scan;
+
+      const { profiles, total, scanned, phone_groups, failed, from_cache } = data.scan;
+      document.getElementById('s-total').textContent = total || '—';
+      document.getElementById('s-failed').textContent = failed ? failed.length : 0;
+
+      const familyCount        = phone_groups ? Object.values(phone_groups).filter(g => g.length > 1).length : 0;
+      const enrolledZeroScreen = profiles.filter(p => p.checked && p.any_enrolled && p.zero_screening).length;
+      document.getElementById('s-families').textContent = familyCount;
+      document.getElementById('s-enrolled').textContent = enrolledZeroScreen;
+
+      fetch('/history').then(r => r.json()).then(d => {
+        const badge = document.getElementById('history-badge');
+        const count = d.history ? d.history.length : 0;
+        badge.textContent = count;
+        badge.style.display = count > 0 ? 'inline' : 'none';
+      });
+
+      if (total && scanned !== undefined) {
+        const pct = Math.round((scanned / total) * 100);
+        document.getElementById('prog-bar').style.width = pct + '%';
+        document.getElementById('prog-pct').textContent = pct + '%';
+        const cacheNote = from_cache ? ' · from cache' : '';
+        document.getElementById('prog-lbl').textContent = `Scanned ${scanned} of ${total} profiles${cacheNote}`;
+      }
+
+      if (profiles && profiles.length > 0) {
+        document.getElementById('filter-area').style.display = 'block';
+        renderResults();
+      }
+
+      if (failed && failed.length > 0 && !data.searching) renderFailed(failed);
+
+    } catch(e) { console.error(e); }
+  }
+
+  function renderResults() {
+    if (!currentData) return;
+    const { surname, profiles, phone_groups, from_cache } = currentData;
+    const nameQuery   = (document.getElementById('name-search').value   || '').toLowerCase();
+    const numberQuery = (document.getElementById('number-search').value || '').replace(/[^0-9]/g, '');
+
+    let filtered = profiles.filter(p => {
+      if (nameQuery   && !p.name.toLowerCase().includes(nameQuery)) return false;
+      if (numberQuery && !(p.raw_phone || '').replace(/[^0-9]/g, '').includes(numberQuery)) return false;
+      if (currentFilter === 'not_enrolled')   return p.checked && !p.any_enrolled;
+      if (currentFilter === 'enrolled')       return p.checked && p.any_enrolled;
+      if (currentFilter === 'zero_screen')    return p.checked && p.zero_screening;
+      if (currentFilter === 'has_screen')     return p.checked && !p.zero_screening;
+      if (currentFilter === 'need_screening') return p.checked && p.any_enrolled && p.zero_screening;
+      if (currentFilter === 'family') {
+        const grp = phone_groups || {};
+        return p.raw_phone && grp[p.raw_phone] && grp[p.raw_phone].length > 1;
+      }
+      return true;
+    });
+
+    document.getElementById('filter-count').textContent = `${filtered.length} of ${profiles.length} profiles`;
+
+    const phoneMap = {};
+    for (const p of filtered) {
+      const key = p.raw_phone || '__none__' + p.name;
+      if (!phoneMap[key]) phoneMap[key] = [];
+      phoneMap[key].push(p);
+    }
+
+    const pg = phone_groups || {};
+    const families = Object.entries(phoneMap).filter(([k, v]) => !k.startsWith('__none__') && pg[k] && pg[k].length > 1);
+    const solos    = Object.entries(phoneMap).filter(([k, v]) => k.startsWith('__none__') || !pg[k] || pg[k].length === 1);
+
+    let html = `<div class="section-heading">
+      Results for <span style="color:var(--red);margin-left:4px">${(surname||'').toUpperCase()}</span>
+      ${from_cache ? '<span class="cached-badge">⚡ Cached</span>' : ''}
+    </div>`;
+
+    html += `<div class="list-header col-grid">
+      <div>Name</div><div>Phone</div><div>DOB</div><div>Age</div>
+      <div>Medicaid ID</div><div>Enrollment</div><div>Screenings</div><div>Pg</div>
+    </div>`;
+
+    for (const [phone, members] of families) {
+      const safePhone = phone.replace(/'/g, "\\'");
+      html += `<div class="family-group">
+        <div class="family-group-header">
+          <div class="family-dot"></div>
+          Family Group &nbsp;·&nbsp;
+          <span class="family-phone">${phone}</span>
+          <span class="fam-count">${members.length}</span>
+          <button class="fam-copy" onclick="copyPhone('${safePhone}')">📋 Copy #</button>
+        </div>`;
+      for (const p of members) html += renderPersonRow(p, false);
+      html += '</div>';
+    }
+
+    for (const [, members] of solos) {
+      html += '<div class="solo-group">' + renderPersonRow(members[0], true) + '</div>';
+    }
+
+    if (filtered.length === 0) {
+      html += '<div class="empty-state"><div class="empty-icon">🔍</div><p>No profiles match the current filter.</p></div>';
+    }
+
+    document.getElementById('results').innerHTML = html;
+  }
+
+  function renderFailed(failed) {
+    let html = `<div class="failed-section">
+      <div class="failed-header">⚠️ ${failed.length} profile${failed.length > 1 ? 's' : ''} failed to load</div>`;
+    for (const f of failed) {
+      html += `<div class="failed-row">
+        <div class="failed-name">${f.name}</div>
+        <div class="failed-err">${f.error || 'Unknown error'}</div>
+      </div>`;
+    }
+    html += '</div>';
+    document.getElementById('results').innerHTML += html;
+  }
+
+  function calcAge(dob) {
+    if (!dob) return '—';
+    const parts = dob.split('/');
+    if (parts.length !== 3) return '—';
+    const birth = new Date(+parts[2], +parts[0] - 1, +parts[1]);
+    if (isNaN(birth)) return '—';
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age >= 0 ? age : '—';
+  }
+
+  function renderPersonRow(p, showPhoneCopy) {
+    const notes = getNotes();
+    let enrollBadge = '<span class="enroll-loading">Loading...</span>';
+    if (p.checked) {
+      const enrollUrl = p.uuid ? `https://app.uniteus.io/facesheet/${p.uuid}/profile` : '#';
+      enrollBadge = p.any_enrolled
+        ? `<a href="${enrollUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="enroll-yes" style="cursor:pointer">✓ Enrolled</span></a>`
+        : `<a href="${enrollUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="enroll-no" style="cursor:pointer">Not Enrolled</span></a>`;
+    }
+    let screenBadge = '<span class="screen-loading">Loading...</span>';
+    if (p.checked) {
+      const screenUrl = p.uuid ? `https://app.uniteus.io/facesheet/${p.uuid}/screenings` : '#';
+      screenBadge = p.zero_screening
+        ? `<a href="${screenUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="screen-zero" style="cursor:pointer">0 Screenings</span></a>`
+        : `<a href="${screenUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="screen-has" style="cursor:pointer">${p.screening_count || '?'}</span></a>`;
+    }
+    const isEnrolled = p.any_enrolled === true;
+    const hasZeroScreenings = p.zero_screening === true;
+    
+    // Green if Enrolled AND 0 Screenings, else Brownish/Warning
+    const enrollClass = isEnrolled ? 'status-target' : 'status-warning';
+    const screenClass = (isEnrolled && hasZeroScreenings) ? 'status-target' : 'status-warning';
+    const isPriority    = p.checked && !p.any_enrolled && p.zero_screening;
+    const hasScreenings = p.checked && !p.zero_screening;
+    const rowClass      = isPriority ? ' priority' : hasScreenings ? ' has-screenings' : '';
+    const age           = calcAge(p.dob);
+    const mID           = p.member_id || '—';
+    const safeName      = p.name.replace(/'/g, "\\'");
+    const safeDob       = (p.dob || '').replace(/'/g, "\\'");
+    const safePhone     = (p.raw_phone || '').replace(/'/g, "\\'");
+    const safeID        = mID.replace(/'/g, "\\'");
+
+    return `<div class="person-row col-grid${rowClass}">
+      <div class="person-name">
+  ${p.uuid
+    ? `<a href="https://app.uniteus.io/facesheet/${p.uuid}/" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;border-bottom:1.5px solid var(--primary-mid);" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='inherit'">${p.name}</a>`
+    : p.name
+  }
+  <button class="cp" onclick="copyText('${safeName}','name')">copy</button>
+</div>
+      <div class="person-phone">
+        ${p.raw_phone || '—'}
+        ${showPhoneCopy && p.raw_phone ? `<button class="cp" onclick="copyPhone('${safePhone}')">copy</button>` : ''}
+      </div>
+      <div class="person-dob">
+        ${p.dob || '—'}
+        ${p.dob ? `<button class="cp" onclick="copyText('${safeDob}','DOB')">copy</button>` : ''}
+      </div>
+      <div class="person-age">${age !== '—' ? age + ' yr' : '—'}</div>
+      <div style="font-size:0.83rem;color:var(--text);display:flex;align-items:center;gap:4px;">
+        <span>${mID}</span>
+        ${mID !== '—' ? `<button class="cp" onclick="copyText('${safeID}','ID')">copy</button>` : ''}
+      </div>
+      <div>${enrollBadge}</div>
+      <div>${screenBadge}</div>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <span class="pg-badge">${p.page}</span>
+        ${p.uuid ? `<button class="note-btn ${notes[p.uuid] ? 'has-note' : ''}" onclick="openNote('${p.uuid}','${safeName}')">
+          ${notes[p.uuid] ? '📝' : '+'} note
+        </button>` : ''}
+      </div>
+    </div>
+    ${notes[p.uuid] ? `<div class="note-text col-grid" style="display:block">📝 ${notes[p.uuid]}</div>` : ''}`;
+  }
+
+  document.getElementById('scan-input').addEventListener('keydown', e => { if (e.key === 'Enter') startScan(); });
+  setInterval(fetchResults, 4000);
+
+  fetch('/history').then(r => r.json()).then(d => {
+    const count = d.history ? d.history.length : 0;
+    const badge = document.getElementById('history-badge');
+    badge.textContent = count;
+    badge.style.display = count > 0 ? 'inline' : 'none';
+  });
+
+// Show/hide scroll-to-top button
+window.addEventListener('scroll', () => {
+  const btn = document.getElementById('scroll-top-btn');
+  if (window.scrollY > 300) {
+    btn.classList.add('visible');
+  } else {
+    btn.classList.remove('visible');
+  }
+});
+// ── Notes ──
+let activeNoteUuid = null;
+
+function countWords(text) {
+  return text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+}
+
+function getNotes() {
+  try { return JSON.parse(localStorage.getItem('uu_notes') || '{}'); } catch { return {}; }
+}
+
+function saveNotes(notes) {
+  localStorage.setItem('uu_notes', JSON.stringify(notes));
+}
+
+function openNote(uuid, name) {
+  activeNoteUuid = uuid;
+  const notes = getNotes();
+  const existing = notes[uuid] || '';
+  document.getElementById('note-popup-name').textContent = name;
+  document.getElementById('note-textarea').value = existing;
+  document.getElementById('note-delete-btn').style.display = existing ? 'inline-block' : 'none';
+  document.getElementById('note-popup').style.display = 'flex';
+  onNoteInput();
+  setTimeout(() => document.getElementById('note-textarea').focus(), 50);
+}
+
+function closeNote() {
+  document.getElementById('note-popup').style.display = 'none';
+  activeNoteUuid = null;
+}
+
+function onNoteInput() {
+  const text  = document.getElementById('note-textarea').value;
+  const words = countWords(text);
+  const counter = document.getElementById('note-word-count');
+  const saveBtn = document.getElementById('note-save-btn');
+  counter.textContent = `${words} / 50 words`;
+  counter.className   = words > 50 ? 'note-word-count over' : 'note-word-count';
+  saveBtn.disabled    = words > 50;
+}
+
+function saveNote() {
+  const text  = document.getElementById('note-textarea').value.trim();
+  const words = countWords(text);
+  if (words > 50) return;
+  const notes = getNotes();
+  if (text) {
+    notes[activeNoteUuid] = text;
+  } else {
+    delete notes[activeNoteUuid];
+  }
+  saveNotes(notes);
+  closeNote();
+  renderResults();
+  showToast('📝 Note saved');
+}
+
+function deleteNote() {
+  const notes = getNotes();
+  delete notes[activeNoteUuid];
+  saveNotes(notes);
+  closeNote();
+  renderResults();
+  showToast('🗑 Note deleted');
+}
+
+// Close on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeNote();
+});
+</script>
+<button class="scroll-top-btn" id="scroll-top-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">↑</button>
+<div class="note-popup" id="note-popup" style="display:none" onclick="if(event.target===this)closeNote()">
+  <div class="note-box">
+    <div class="note-box-header">
+      <div class="note-box-name" id="note-popup-name"></div>
+      <button class="note-box-close" onclick="closeNote()">✕</button>
+    </div>
+    <textarea class="note-textarea" id="note-textarea" placeholder="Add a note... (max 50 words)" oninput="onNoteInput()"></textarea>
+    <div class="note-word-count" id="note-word-count">0 / 50 words</div>
+    <div class="note-actions">
+      <button class="note-save" id="note-save-btn" onclick="saveNote()">Save Note</button>
+      <button class="note-delete" id="note-delete-btn" onclick="deleteNote()" style="display:none">Delete</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

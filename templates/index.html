@@ -22,13 +22,13 @@
 
 <!-- ── Sticky Top Shell ── -->
 <div class="sticky-top-shell" id="sticky-top-shell">
-  <!-- ── Header ── -->
   <header class="header">
     <div class="header-inner">
-      <div class="logo">
+      <!-- Logo is a button: goes home when idle, does nothing during scan -->
+      <button class="logo-btn" id="logo-btn" onclick="goHome()" title="Home">
         <div class="logo-icon">U</div>
         <span class="logo-text">Unite<span>Us</span> Tools</span>
-      </div>
+      </button>
       <div class="header-sep"></div>
       <div class="header-right">
         <button class="nav-pill" onclick="openAutoScanner()" id="autoscanner-btn">
@@ -40,7 +40,7 @@
         </button>
         <button class="nav-pill" onclick="openHistory()" id="history-btn">
           <span class="nav-icon">🕐</span> History
-          <span class="history-badge" id="history-badge">0</span>
+          <span class="history-badge" id="history-badge" style="display:none">0</span>
         </button>
         <button class="nav-pill" onclick="openSettings()">
           <span class="nav-icon">⚙️</span> Settings
@@ -49,8 +49,8 @@
     </div>
   </header>
 
-  <!-- ── Status bar ── -->
-  <div class="status-bar">
+  <!-- Status bar — hidden until a scan starts -->
+  <div class="status-bar" id="status-bar-wrap" style="display:none">
     <div class="status-pill idle" id="status-bar">
       <span id="status-icon">●</span>
       <span id="status-text">Waiting for search...</span>
@@ -58,26 +58,26 @@
     </div>
   </div>
 
-  <!-- ── Search ── -->
-  <div class="container-search">
+  <!-- Search row — hidden on homescreen, shown once user starts -->
+  <div class="container-search" id="search-area" style="display:none">
     <div class="search-row">
       <div class="search-wrap">
         <span class="search-icon">🔎</span>
-        <input type="text" id="scan-input" placeholder="Enter a surname to scan all profiles — e.g. Basnet, Singh, Torres..." />
+        <input type="text" id="scan-input" placeholder="Enter a surname — e.g. Basnet, Singh, Torres..." />
       </div>
-      <button class="btn-primary" id="scan-btn" onclick="startScan()">Scan Profiles</button>
+      <button class="btn-primary" id="scan-btn" onclick="startScan()">Scan</button>
       <button class="btn-stop" id="stop-btn" onclick="stopSearch()">⛔ Stop</button>
     </div>
   </div>
 
-  <!-- ── Filters (shown once results arrive) ── -->
+  <!-- Filter bar -->
   <div id="filter-area" style="display:none">
     <div class="filter-bar">
       <button class="filter-btn active" onclick="setFilter('need_screening', this)">🔔 Need Screening</button>
       <button class="filter-btn" onclick="setFilter('all', this)">All</button>
       <input class="filter-search" type="text" id="name-search" placeholder="Search name..." oninput="renderResults()" />
       <input class="filter-search" type="text" id="number-search" placeholder="Search phone..." oninput="renderResults()" />
-      <button class="filter-btn" onclick="setFilter('family', this)">Family Groups</button>
+      <button class="filter-btn" onclick="setFilter('family', this)">Families</button>
       <button class="filter-btn" onclick="setFilter('enrolled', this)">Enrolled</button>
       <button class="filter-btn" onclick="setFilter('not_enrolled', this)">Not Enrolled</button>
       <button class="filter-btn" onclick="setFilter('zero_screen', this)">No Screenings</button>
@@ -87,8 +87,35 @@
   </div>
 </div><!-- /.sticky-top-shell -->
 
-<!-- ── Main ── -->
-<div class="container">
+<!-- ══════════════════════════════════════════════════════
+     HOME SCREEN  (shown when nothing has been searched)
+════════════════════════════════════════════════════════ -->
+<div class="homescreen" id="homescreen">
+  <div class="home-hero">
+    <div class="home-logo-ring">
+      <div class="home-logo-inner">U</div>
+    </div>
+    <h1 class="home-title">Unite<span>Us</span> Tools</h1>
+    <p class="home-subtitle">Scan, screen, and track clients — faster.</p>
+    <div class="home-search-wrap">
+      <span class="home-search-icon">🔎</span>
+      <input type="text" id="home-scan-input" class="home-search-input"
+        placeholder="Enter a surname to begin scanning…" />
+      <button class="home-scan-btn" onclick="startScanFromHome()">Scan Profiles</button>
+    </div>
+    <div class="home-pills">
+      <span class="home-pill">👥 Family grouping</span>
+      <span class="home-pill">📋 One-click copy</span>
+      <span class="home-pill">🔗 Quick links</span>
+      <span class="home-pill">📝 Profile notes</span>
+      <span class="home-pill">🤖 Auto scanner</span>
+      <span class="home-pill">⚡ Cached results</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Main content area (hidden until scan) ── -->
+<div class="container" id="main-container" style="display:none">
 
   <!-- Metric cards -->
   <div class="cards">
@@ -105,17 +132,17 @@
     <div class="card">
       <div class="card-icon">🔔</div>
       <div class="card-num" id="s-enrolled">—</div>
-      <div class="card-lbl">Enrolled &amp; 0 Screenings</div>
+      <div class="card-lbl">Need Screening</div>
     </div>
     <div class="card">
       <div class="card-icon">⚠️</div>
-      <div class="card-num red" id="s-failed">—</div>
+      <div class="card-num danger-num" id="s-failed">—</div>
       <div class="card-lbl">Failed</div>
     </div>
   </div>
 
   <!-- Progress -->
-  <div class="progress-wrap" id="prog-wrap">
+  <div class="progress-wrap" id="prog-wrap" style="display:none">
     <div class="progress-header">
       <div class="progress-lbl" id="prog-lbl">Scanning profiles...</div>
       <div class="progress-pct" id="prog-pct">0%</div>
@@ -124,126 +151,92 @@
   </div>
 
   <!-- Results -->
-  <div id="results">
-    <div class="empty-state">
-      <div class="empty-icon">🔎</div>
-      <p>Enter a surname above to scan all matching profiles.<br>Family members sharing a phone number will be grouped and checked first.</p>
-    </div>
-  </div>
+  <div id="results"></div>
 
 </div>
 
-<!-- ── History Panel ── -->
+<!-- ══════════════════════════════════════════════════════
+     PANELS
+════════════════════════════════════════════════════════ -->
+
+<!-- History -->
 <div class="panel-overlay" id="history-overlay" onclick="closeHistory()"></div>
 <div class="side-panel" id="history-panel">
   <div class="panel-header">
-    <div>
-      <div class="panel-title">🕐 Search History</div>
-      <div class="panel-subtitle">Last 48 hours</div>
-    </div>
+    <div><div class="panel-title">🕐 Search History</div><div class="panel-subtitle">Last 48 hours</div></div>
     <button class="panel-close" onclick="closeHistory()">✕</button>
   </div>
-  <div class="panel-body" id="history-body">
-    <div class="history-empty">No searches yet.</div>
-  </div>
+  <div class="panel-body" id="history-body"><div class="history-empty">No searches yet.</div></div>
 </div>
 
-<!-- ── Settings Panel ── -->
+<!-- Settings -->
 <div class="panel-overlay" id="settings-overlay" onclick="closeSettings()"></div>
 <div class="side-panel" id="settings-panel">
   <div class="panel-header">
-    <div>
-      <div class="panel-title">⚙️ Settings</div>
-      <div class="panel-subtitle">Credentials &amp; cache</div>
-    </div>
+    <div><div class="panel-title">⚙️ Settings</div><div class="panel-subtitle">Credentials &amp; cache</div></div>
     <button class="panel-close" onclick="closeSettings()">✕</button>
   </div>
   <div class="panel-body">
     <div class="section-lbl">Credentials</div>
-    <div class="form-group">
-      <label>Unite Us Email</label>
-      <input type="email" id="cred-email" placeholder="your@email.com" />
-    </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="cred-password" placeholder="••••••••" />
-    </div>
+    <div class="form-group"><label>Unite Us Email</label><input type="email" id="cred-email" placeholder="your@email.com" /></div>
+    <div class="form-group"><label>Password</label><input type="password" id="cred-password" placeholder="••••••••" /></div>
     <button class="btn-save-full" onclick="saveCredentials()">Save &amp; Reconnect</button>
     <div class="save-msg" id="save-msg">✅ Saved! Reconnecting...</div>
     <hr class="divider">
     <div class="section-lbl">Cache</div>
-    <p style="font-size:0.82rem;color:var(--text-2);margin-bottom:14px;line-height:1.6">Cached results load instantly without re-scanning Unite Us.</p>
+    <p style="font-size:0.82rem;color:var(--text-2);margin-bottom:14px;line-height:1.6">Cached results load instantly without re-scanning.</p>
     <button class="danger-btn" onclick="clearCache()">🗑 Clear All Cached Results</button>
   </div>
 </div>
 
-<!-- ── Global Notepad Panel ── -->
+<!-- Global Notepad -->
 <div class="panel-overlay" id="notepad-overlay" onclick="closeNotepad()"></div>
 <div class="side-panel" id="notepad-panel">
   <div class="panel-header">
-    <div>
-      <div class="panel-title">📓 Global Notepad</div>
-      <div class="panel-subtitle">Persistent scratch pad</div>
-    </div>
+    <div><div class="panel-title">📓 Global Notepad</div><div class="panel-subtitle">Persistent scratch pad</div></div>
     <button class="panel-close" onclick="closeNotepad()">✕</button>
   </div>
   <div class="panel-body">
     <textarea id="global-notepad-ta" class="global-notepad-textarea"
-      placeholder="Use this space for any notes, reminders, or scratch work. Auto-saved."
+      placeholder="Notes, reminders, anything. Auto-saved."
       oninput="scheduleNotepadSave()"></textarea>
     <div class="notepad-saved-msg" id="notepad-saved-msg"></div>
   </div>
 </div>
 
-<!-- ── Auto Scanner Panel ── -->
+<!-- Auto Scanner -->
 <div class="panel-overlay" id="autoscanner-overlay" onclick="closeAutoScanner()"></div>
 <div class="side-panel wide-panel" id="autoscanner-panel">
   <div class="panel-header">
-    <div>
-      <div class="panel-title">🤖 Auto Scanner</div>
-      <div class="panel-subtitle">Batch scan a list of surnames</div>
-    </div>
+    <div><div class="panel-title">🤖 Auto Scanner</div><div class="panel-subtitle">Batch scan a list of surnames</div></div>
     <button class="panel-close" onclick="closeAutoScanner()">✕</button>
   </div>
   <div class="panel-body">
-
-    <!-- Add surname controls -->
     <div class="autoscan-add-row">
       <input type="text" id="autoscan-input" class="autoscan-input" placeholder="Enter a surname..." />
       <button class="btn-autoscan-add top" onclick="autoscanAddTop()">⬆ Add Top</button>
       <button class="btn-autoscan-add bottom" onclick="autoscanAddBottom()">⬇ Add Bottom</button>
     </div>
-
-    <!-- Queue list -->
     <div class="section-lbl" style="margin-top:16px">Surname Queue</div>
-    <div class="autoscan-list" id="autoscan-list">
-      <div class="autoscan-empty">No surnames queued.</div>
-    </div>
-
-    <!-- Start / Stop -->
+    <div class="autoscan-list" id="autoscan-list"><div class="autoscan-empty">No surnames queued.</div></div>
     <div class="autoscan-controls">
       <button class="btn-primary" id="autoscan-run-btn" onclick="autoscanStart()">▶ Run Auto Scan</button>
       <button class="btn-stop" id="autoscan-stop-btn" onclick="autoscanStop()" style="display:none">⛔ Stop</button>
       <span class="autoscan-status" id="autoscan-status-txt"></span>
     </div>
-
-    <!-- History of autoscan results -->
     <div class="section-lbl" style="margin-top:24px">Autoscan History</div>
-    <div class="autoscan-history" id="autoscan-history">
-      <div class="autoscan-empty">No autoscan results yet.</div>
-    </div>
-
+    <div class="autoscan-history" id="autoscan-history"><div class="autoscan-empty">No results yet.</div></div>
   </div>
 </div>
 
-<!-- ── Per-profile Note Popup ── -->
+<!-- Per-profile Note Popup -->
 <div class="note-popup" id="note-popup" style="display:none" onclick="if(event.target===this)closeNote()">
   <div class="note-box">
     <div class="note-box-header">
       <div class="note-box-name" id="note-popup-name"></div>
       <button class="note-box-close" onclick="closeNote()">✕</button>
     </div>
-    <textarea class="note-textarea" id="note-textarea" placeholder="Add a note... (max 100 characters)" oninput="onNoteInput()" maxlength="110"></textarea>
+    <textarea class="note-textarea" id="note-textarea" placeholder="Add a note… (max 100 characters)" oninput="onNoteInput()" maxlength="110"></textarea>
     <div class="note-char-count" id="note-char-count">0 / 100 characters</div>
     <div class="note-actions">
       <button class="note-save" id="note-save-btn" onclick="saveNote()">Save Note</button>
@@ -255,725 +248,701 @@
 <div class="toast" id="toast"></div>
 <button class="scroll-top-btn" id="scroll-top-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">↑</button>
 
+<!-- ══════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════════ -->
 <script>
-  // ══════════════════════════════════════════════════════
-  // STATE
-  // ══════════════════════════════════════════════════════
-  let polling = null;
-  let currentFilter = 'need_screening';
-  let currentData = null;
-  let scanStartTime = null;
-  let timerInterval = null;
-  let lastEstimate = null;
-  let lastEstimateTime = null;
-  let serverNotes = {};       // { uuid: text } — loaded from server
-  let notepadSaveTimer = null;
-  let activeNoteUuid = null;
-  let activeNoteName = '';
+// ══════════════════════════════════════════════════════
+// APP STATE
+// ══════════════════════════════════════════════════════
+let polling         = null;
+let currentFilter   = 'need_screening';
+let currentData     = null;
+let scanStartTime   = null;
+let timerInterval   = null;
+let lastEstimate    = null;
+let lastEstimateTime= null;
+let serverNotes     = {};
+let notepadSaveTimer= null;
+let activeNoteUuid  = null;
+let isSearchMode    = false;   // true once user has searched once
 
-  // ── Sticky header height tracking ──
-  function updateStickyOffset() {
-    const shell = document.getElementById('sticky-top-shell');
-    const h = shell ? shell.offsetHeight : 0;
-    document.documentElement.style.setProperty('--sticky-h', h + 'px');
-  }
-  window.addEventListener('resize', updateStickyOffset);
-  document.addEventListener('DOMContentLoaded', () => setTimeout(updateStickyOffset, 100));
+// Track which row UUIDs are currently "copy-highlighted"
+// key: uuid (or row-idx), value: true
+const copiedRows = new Set();
 
-  // ══════════════════════════════════════════════════════
-  // ETA TIMER
-  // ══════════════════════════════════════════════════════
-  function startETA() {
-    scanStartTime = Date.now();
-    lastEstimate = null; lastEstimateTime = null;
-    document.getElementById('eta-timer').textContent = '· Estimating...';
-    if (timerInterval) clearInterval(timerInterval);
-    timerInterval = setInterval(tickETA, 1000);
-  }
-  function tickETA() {
-    if (lastEstimate === null || lastEstimateTime === null) {
-      document.getElementById('eta-timer').textContent = '· Estimating...'; return;
-    }
-    const elapsed = (Date.now() - lastEstimateTime) / 1000;
-    const remaining = Math.max(0, Math.round(lastEstimate - elapsed));
-    document.getElementById('eta-timer').textContent = '· ' + formatETA(remaining);
-  }
-  function updateETAEstimate(scanned, total) {
-    if (!scanStartTime || scanned === 0) return;
-    const elapsed = (Date.now() - scanStartTime) / 1000;
-    const perProfile = elapsed / scanned;
-    lastEstimate = Math.round(perProfile * (total - scanned));
-    lastEstimateTime = Date.now();
-  }
-  function formatETA(secs) {
-    if (secs <= 0) return 'Almost done...';
-    const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = secs % 60;
-    if (h > 0) return `~${h}h ${m}m remaining`;
-    if (m > 0) return `~${m}m ${s}s remaining`;
-    return `~${s}s remaining`;
-  }
-  function stopETA(done) {
-    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-    document.getElementById('eta-timer').textContent = done ? '· Complete' : '';
-    setTimeout(() => document.getElementById('eta-timer').textContent = '', 3000);
-  }
+// ══════════════════════════════════════════════════════
+// STICKY HEIGHT
+// ══════════════════════════════════════════════════════
+function updateStickyOffset() {
+  const shell = document.getElementById('sticky-top-shell');
+  if (shell) document.documentElement.style.setProperty('--sticky-h', shell.offsetHeight + 'px');
+}
+window.addEventListener('resize', updateStickyOffset);
 
-  // ══════════════════════════════════════════════════════
-  // TOAST
-  // ══════════════════════════════════════════════════════
-  function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg; t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2500);
-  }
+// ══════════════════════════════════════════════════════
+// HOME SCREEN
+// ══════════════════════════════════════════════════════
+function goHome() {
+  // Logo click: only go home when not actively scanning
+  if (isSearchMode) return; // logo does nothing mid-scan
+  showHomeScreen();
+}
 
-  // ══════════════════════════════════════════════════════
-  // COPY
-  // ══════════════════════════════════════════════════════
-  function copyText(text, label) {
-    navigator.clipboard.writeText(text).then(() => {
-      showToast('Copied ' + label + ': ' + text);
-    });
-  }
-  function copyPhone(raw) {
-    let d = raw.replace(/[^0-9]/g, '');
-    if (d.length === 11 && d.startsWith('1')) d = d.slice(1);
-    if (d.length !== 10) { copyText(raw, 'phone'); return; }
-    const fmt = '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6);
-    copyText(fmt, 'phone');
-  }
+function showHomeScreen() {
+  document.getElementById('homescreen').style.display = 'flex';
+  document.getElementById('main-container').style.display = 'none';
+  document.getElementById('search-area').style.display = 'none';
+  document.getElementById('filter-area').style.display = 'none';
+  document.getElementById('status-bar-wrap').style.display = 'none';
+  document.getElementById('logo-btn').classList.remove('logo-inactive');
+  isSearchMode = false;
+  currentData  = null;
+  setTimeout(updateStickyOffset, 50);
+}
 
-  // ══════════════════════════════════════════════════════
-  // ROW CLICK / COPY HIGHLIGHT
-  // ══════════════════════════════════════════════════════
-  // We delegate from the results container
-  document.addEventListener('click', function(e) {
-    const row = e.target.closest('.person-row');
-    if (!row) return;
-    // Don't highlight if clicking a button/link inside the row
-    if (e.target.closest('button, a')) return;
-    // Toggle clicked state
-    const wasClicked = row.classList.contains('row-clicked');
-    document.querySelectorAll('.person-row.row-clicked').forEach(r => r.classList.remove('row-clicked'));
-    if (!wasClicked) row.classList.add('row-clicked');
+function showSearchMode() {
+  document.getElementById('homescreen').style.display = 'none';
+  document.getElementById('main-container').style.display = 'block';
+  document.getElementById('search-area').style.display = 'block';
+  document.getElementById('status-bar-wrap').style.display = 'block';
+  document.getElementById('logo-btn').classList.add('logo-inactive');
+  isSearchMode = true;
+  setTimeout(updateStickyOffset, 50);
+}
+
+function startScanFromHome() {
+  const val = document.getElementById('home-scan-input').value.trim();
+  if (!val) return;
+  showSearchMode();
+  document.getElementById('scan-input').value = val;
+  startScan();
+}
+
+// Home input: Enter key
+document.addEventListener('DOMContentLoaded', () => {
+  const hi = document.getElementById('home-scan-input');
+  if (hi) hi.addEventListener('keydown', e => { if (e.key === 'Enter') startScanFromHome(); });
+  const si = document.getElementById('scan-input');
+  if (si) si.addEventListener('keydown', e => { if (e.key === 'Enter') startScan(); });
+  const ai = document.getElementById('autoscan-input');
+  if (ai) ai.addEventListener('keydown', e => { if (e.key === 'Enter') autoscanAddBottom(); });
+  setTimeout(updateStickyOffset, 200);
+});
+
+// ══════════════════════════════════════════════════════
+// ETA TIMER
+// ══════════════════════════════════════════════════════
+function startETA() {
+  scanStartTime = Date.now(); lastEstimate = null; lastEstimateTime = null;
+  document.getElementById('eta-timer').textContent = '· Estimating...';
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(tickETA, 1000);
+}
+function tickETA() {
+  if (!lastEstimate || !lastEstimateTime) { document.getElementById('eta-timer').textContent = '· Estimating...'; return; }
+  const remaining = Math.max(0, Math.round(lastEstimate - (Date.now() - lastEstimateTime) / 1000));
+  document.getElementById('eta-timer').textContent = '· ' + formatETA(remaining);
+}
+function updateETAEstimate(scanned, total) {
+  if (!scanStartTime || scanned === 0) return;
+  const elapsed = (Date.now() - scanStartTime) / 1000;
+  lastEstimate = Math.round((elapsed / scanned) * (total - scanned));
+  lastEstimateTime = Date.now();
+}
+function formatETA(s) {
+  if (s <= 0) return 'Almost done...';
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+  if (h > 0) return `~${h}h ${m}m remaining`;
+  if (m > 0) return `~${m}m ${sec}s remaining`;
+  return `~${sec}s remaining`;
+}
+function stopETA(done) {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  document.getElementById('eta-timer').textContent = done ? '· Complete' : '';
+  setTimeout(() => { document.getElementById('eta-timer').textContent = ''; }, 3000);
+}
+
+// ══════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+// ══════════════════════════════════════════════════════
+// COPY  — highlight stays until NEXT copy event (no timeout)
+// ══════════════════════════════════════════════════════
+function copyText(text, label, rowEl) {
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('Copied ' + label + ': ' + text);
+    if (rowEl) markRowCopied(rowEl);
   });
+}
+function copyPhone(raw, rowEl) {
+  let d = raw.replace(/[^0-9]/g, '');
+  if (d.length === 11 && d.startsWith('1')) d = d.slice(1);
+  const fmt = d.length === 10 ? '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6) : raw;
+  copyText(fmt, 'phone', rowEl);
+}
 
-  // Mark row as copied when any copy button inside it is pressed
-  document.addEventListener('click', function(e) {
-    const btn = e.target.closest('.cp, .fam-copy');
-    if (!btn) return;
-    const row = btn.closest('.person-row');
-    if (row) {
-      row.classList.add('row-copied');
-      setTimeout(() => row.classList.remove('row-copied'), 1800);
-    }
-  });
+function markRowCopied(rowEl) {
+  // Clear any previously copied row (only one at a time)
+  document.querySelectorAll('.person-row.row-copied').forEach(r => r.classList.remove('row-copied'));
+  rowEl.classList.add('row-copied');
+}
 
-  // ══════════════════════════════════════════════════════
-  // FILTER
-  // ══════════════════════════════════════════════════════
-  function setFilter(f, btn) {
-    currentFilter = f;
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    renderResults();
-  }
+// Delegate copy-button clicks so we can pass the row element
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.cp, .fam-copy');
+  if (!btn) return;
+  const row = btn.closest('.person-row');
+  if (row) markRowCopied(row);
+});
 
-  // ══════════════════════════════════════════════════════
-  // HISTORY
-  // ══════════════════════════════════════════════════════
-  function openHistory() {
-    fetch('/history').then(r => r.json()).then(data => {
-      const body = document.getElementById('history-body');
-      if (!data.history || data.history.length === 0) {
-        body.innerHTML = '<div class="history-empty">No searches in the last 48 hours.</div>';
-      } else {
-        let html = '';
-        for (const h of data.history) {
-          html += `<div class="history-item">
-            <div class="history-surname">
-              ${h.surname.toUpperCase()}
-              <button class="history-rescan" onclick="rescan('${h.surname}')">↻ Rescan</button>
-            </div>
-            <div class="history-time">🕐 ${h.time_str}</div>
-            <div class="history-stats">
-              <span class="h-stat">${h.total} profiles</span>
-              <span class="h-stat">${h.families} families</span>
-              <span class="h-stat green">${h.enrolled} need screening</span>
-              ${h.failed > 0 ? `<span class="h-stat red">${h.failed} failed</span>` : ''}
-            </div>
-          </div>`;
-        }
-        body.innerHTML = html;
-      }
-    });
-    document.getElementById('history-panel').classList.add('open');
-    document.getElementById('history-overlay').classList.add('open');
-  }
-  function closeHistory() {
-    document.getElementById('history-panel').classList.remove('open');
-    document.getElementById('history-overlay').classList.remove('open');
-  }
-  function rescan(surname) {
-    closeHistory();
-    document.getElementById('scan-input').value = surname;
-    startScan();
-  }
+// ══════════════════════════════════════════════════════
+// ROW CLICK HIGHLIGHT
+// ══════════════════════════════════════════════════════
+document.addEventListener('click', function(e) {
+  const row = e.target.closest('.person-row');
+  if (!row) return;
+  if (e.target.closest('button, a')) return;
+  const wasClicked = row.classList.contains('row-clicked');
+  document.querySelectorAll('.person-row.row-clicked').forEach(r => r.classList.remove('row-clicked'));
+  if (!wasClicked) row.classList.add('row-clicked');
+});
 
-  // ══════════════════════════════════════════════════════
-  // SETTINGS
-  // ══════════════════════════════════════════════════════
-  function openSettings() {
-    fetch('/creds').then(r => r.json()).then(d => {
-      document.getElementById('cred-email').value = d.email || '';
-      document.getElementById('cred-password').value = '';
-    });
-    document.getElementById('settings-panel').classList.add('open');
-    document.getElementById('settings-overlay').classList.add('open');
-  }
-  function closeSettings() {
-    document.getElementById('settings-panel').classList.remove('open');
-    document.getElementById('settings-overlay').classList.remove('open');
-  }
-  async function saveCredentials() {
-    const email = document.getElementById('cred-email').value.trim();
-    const password = document.getElementById('cred-password').value.trim();
-    if (!email || !password) { showToast('Enter both fields'); return; }
-    await fetch('/save-creds?email=' + encodeURIComponent(email) + '&password=' + encodeURIComponent(password));
-    document.getElementById('save-msg').style.display = 'block';
-    setTimeout(() => { document.getElementById('save-msg').style.display = 'none'; closeSettings(); }, 2000);
-  }
-  async function clearCache() {
-    await fetch('/clear-cache');
-    showToast('Cache cleared');
-    closeSettings();
-  }
+// ══════════════════════════════════════════════════════
+// FILTER
+// ══════════════════════════════════════════════════════
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderResults();
+}
 
-  // ══════════════════════════════════════════════════════
-  // GLOBAL NOTEPAD
-  // ══════════════════════════════════════════════════════
-  function openNotepad() {
-    fetch('/global-notepad').then(r => r.json()).then(d => {
-      document.getElementById('global-notepad-ta').value = d.notepad || '';
-    });
-    document.getElementById('notepad-panel').classList.add('open');
-    document.getElementById('notepad-overlay').classList.add('open');
-  }
-  function closeNotepad() {
-    document.getElementById('notepad-panel').classList.remove('open');
-    document.getElementById('notepad-overlay').classList.remove('open');
-    // Flush any pending save
-    if (notepadSaveTimer) {
-      clearTimeout(notepadSaveTimer);
-      notepadSaveTimer = null;
-      doSaveNotepad();
-    }
-  }
-  function scheduleNotepadSave() {
-    if (notepadSaveTimer) clearTimeout(notepadSaveTimer);
-    notepadSaveTimer = setTimeout(doSaveNotepad, 1200);
-  }
-  async function doSaveNotepad() {
-    notepadSaveTimer = null;
-    const text = document.getElementById('global-notepad-ta').value;
-    await fetch('/save-notepad?text=' + encodeURIComponent(text));
-    const msg = document.getElementById('notepad-saved-msg');
-    msg.textContent = '✓ Saved';
-    setTimeout(() => { msg.textContent = ''; }, 1500);
-  }
-
-  // ══════════════════════════════════════════════════════
-  // PER-PROFILE NOTES  (server-side persistence)
-  // ══════════════════════════════════════════════════════
-  async function loadNotes() {
-    const r = await fetch('/notes');
-    const d = await r.json();
-    serverNotes = d.notes || {};
-  }
-
-  function openNote(uuid, name) {
-    activeNoteUuid = uuid;
-    activeNoteName = name;
-    const existing = serverNotes[uuid] || '';
-    document.getElementById('note-popup-name').textContent = name;
-    document.getElementById('note-textarea').value = existing;
-    document.getElementById('note-delete-btn').style.display = existing ? 'inline-block' : 'none';
-    document.getElementById('note-popup').style.display = 'flex';
-    onNoteInput();
-    setTimeout(() => document.getElementById('note-textarea').focus(), 50);
-  }
-
-  function closeNote() {
-    document.getElementById('note-popup').style.display = 'none';
-    activeNoteUuid = null;
-  }
-
-  function onNoteInput() {
-    const text = document.getElementById('note-textarea').value;
-    const len = text.length;
-    const counter = document.getElementById('note-char-count');
-    const saveBtn = document.getElementById('note-save-btn');
-    counter.textContent = `${len} / 100 characters`;
-    counter.className = len > 100 ? 'note-char-count over' : 'note-char-count';
-    saveBtn.disabled = len > 100;
-  }
-
-  async function saveNote() {
-    const text = document.getElementById('note-textarea').value.trim();
-    if (text.length > 100) return;
-    await fetch('/save-note?uuid=' + encodeURIComponent(activeNoteUuid) + '&text=' + encodeURIComponent(text));
-    if (text) {
-      serverNotes[activeNoteUuid] = text;
+// ══════════════════════════════════════════════════════
+// HISTORY
+// ══════════════════════════════════════════════════════
+function openHistory() {
+  fetch('/history').then(r => r.json()).then(data => {
+    const body = document.getElementById('history-body');
+    if (!data.history || !data.history.length) {
+      body.innerHTML = '<div class="history-empty">No searches in the last 48 hours.</div>';
     } else {
-      delete serverNotes[activeNoteUuid];
+      body.innerHTML = data.history.map(h => `
+        <div class="history-item">
+          <div class="history-surname">${h.surname.toUpperCase()}
+            <button class="history-rescan" onclick="rescan('${h.surname}')">↻ Rescan</button>
+          </div>
+          <div class="history-time">🕐 ${h.time_str}</div>
+          <div class="history-stats">
+            <span class="h-stat">${h.total} profiles</span>
+            <span class="h-stat">${h.families} families</span>
+            <span class="h-stat green">${h.enrolled} need screening</span>
+            ${h.failed > 0 ? `<span class="h-stat red">${h.failed} failed</span>` : ''}
+          </div>
+        </div>`).join('');
     }
-    closeNote();
-    renderResults();
-    showToast('📝 Note saved');
-  }
+  });
+  document.getElementById('history-panel').classList.add('open');
+  document.getElementById('history-overlay').classList.add('open');
+}
+function closeHistory() {
+  document.getElementById('history-panel').classList.remove('open');
+  document.getElementById('history-overlay').classList.remove('open');
+}
+function rescan(surname) {
+  closeHistory();
+  showSearchMode();
+  document.getElementById('scan-input').value = surname;
+  startScan();
+}
 
-  async function deleteNote() {
-    await fetch('/delete-note?uuid=' + encodeURIComponent(activeNoteUuid));
-    delete serverNotes[activeNoteUuid];
-    closeNote();
-    renderResults();
-    showToast('🗑 Note deleted');
-  }
+// ══════════════════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════════════════
+function openSettings() {
+  fetch('/creds').then(r => r.json()).then(d => {
+    document.getElementById('cred-email').value = d.email || '';
+    document.getElementById('cred-password').value = '';
+  });
+  document.getElementById('settings-panel').classList.add('open');
+  document.getElementById('settings-overlay').classList.add('open');
+}
+function closeSettings() {
+  document.getElementById('settings-panel').classList.remove('open');
+  document.getElementById('settings-overlay').classList.remove('open');
+}
+async function saveCredentials() {
+  const email = document.getElementById('cred-email').value.trim();
+  const pass  = document.getElementById('cred-password').value.trim();
+  if (!email || !pass) { showToast('Enter both fields'); return; }
+  await fetch('/save-creds?email=' + encodeURIComponent(email) + '&password=' + encodeURIComponent(pass));
+  document.getElementById('save-msg').style.display = 'block';
+  setTimeout(() => { document.getElementById('save-msg').style.display = 'none'; closeSettings(); }, 2000);
+}
+async function clearCache() {
+  await fetch('/clear-cache');
+  showToast('Cache cleared');
+  closeSettings();
+}
 
-  // ══════════════════════════════════════════════════════
-  // AUTO SCANNER
-  // ══════════════════════════════════════════════════════
-  let autoscanPollTimer = null;
+// ══════════════════════════════════════════════════════
+// GLOBAL NOTEPAD
+// ══════════════════════════════════════════════════════
+function openNotepad() {
+  fetch('/global-notepad').then(r => r.json()).then(d => {
+    document.getElementById('global-notepad-ta').value = d.notepad || '';
+  });
+  document.getElementById('notepad-panel').classList.add('open');
+  document.getElementById('notepad-overlay').classList.add('open');
+}
+function closeNotepad() {
+  document.getElementById('notepad-panel').classList.remove('open');
+  document.getElementById('notepad-overlay').classList.remove('open');
+  if (notepadSaveTimer) { clearTimeout(notepadSaveTimer); notepadSaveTimer = null; doSaveNotepad(); }
+}
+function scheduleNotepadSave() {
+  if (notepadSaveTimer) clearTimeout(notepadSaveTimer);
+  notepadSaveTimer = setTimeout(doSaveNotepad, 1200);
+}
+async function doSaveNotepad() {
+  notepadSaveTimer = null;
+  const text = document.getElementById('global-notepad-ta').value;
+  await fetch('/save-notepad?text=' + encodeURIComponent(text));
+  const msg = document.getElementById('notepad-saved-msg');
+  msg.textContent = '✓ Saved';
+  setTimeout(() => { msg.textContent = ''; }, 1500);
+}
 
-  function openAutoScanner() {
-    refreshAutoscanList();
-    refreshAutoscanHistory();
-    document.getElementById('autoscanner-panel').classList.add('open');
-    document.getElementById('autoscanner-overlay').classList.add('open');
-    if (!autoscanPollTimer) {
-      autoscanPollTimer = setInterval(refreshAutoscanHistory, 5000);
-    }
-  }
-  function closeAutoScanner() {
-    document.getElementById('autoscanner-panel').classList.remove('open');
-    document.getElementById('autoscanner-overlay').classList.remove('open');
-    if (autoscanPollTimer) { clearInterval(autoscanPollTimer); autoscanPollTimer = null; }
-  }
+// ══════════════════════════════════════════════════════
+// NOTES (server-side)
+// ══════════════════════════════════════════════════════
+async function loadNotes() {
+  const r = await fetch('/notes');
+  const d = await r.json();
+  serverNotes = d.notes || {};
+}
+function openNote(uuid, name) {
+  activeNoteUuid = uuid;
+  const existing = serverNotes[uuid] || '';
+  document.getElementById('note-popup-name').textContent = name;
+  document.getElementById('note-textarea').value = existing;
+  document.getElementById('note-delete-btn').style.display = existing ? 'inline-block' : 'none';
+  document.getElementById('note-popup').style.display = 'flex';
+  onNoteInput();
+  setTimeout(() => document.getElementById('note-textarea').focus(), 50);
+}
+function closeNote() {
+  document.getElementById('note-popup').style.display = 'none';
+  activeNoteUuid = null;
+}
+function onNoteInput() {
+  const len = document.getElementById('note-textarea').value.length;
+  const counter = document.getElementById('note-char-count');
+  counter.textContent = `${len} / 100 characters`;
+  counter.className   = len > 100 ? 'note-char-count over' : 'note-char-count';
+  document.getElementById('note-save-btn').disabled = len > 100;
+}
+async function saveNote() {
+  const text = document.getElementById('note-textarea').value.trim();
+  if (text.length > 100) return;
+  await fetch('/save-note?uuid=' + encodeURIComponent(activeNoteUuid) + '&text=' + encodeURIComponent(text));
+  if (text) serverNotes[activeNoteUuid] = text; else delete serverNotes[activeNoteUuid];
+  closeNote(); renderResults(); showToast('📝 Note saved');
+}
+async function deleteNote() {
+  await fetch('/delete-note?uuid=' + encodeURIComponent(activeNoteUuid));
+  delete serverNotes[activeNoteUuid];
+  closeNote(); renderResults(); showToast('🗑 Note deleted');
+}
 
-  async function refreshAutoscanList() {
-    const r = await fetch('/autoscan-list');
-    const d = await r.json();
-    renderAutoscanList(d.list || []);
-  }
-
-  function renderAutoscanList(list) {
-    const el = document.getElementById('autoscan-list');
-    const badge = document.getElementById('autoscan-badge');
-    badge.textContent = list.length;
-    badge.style.display = list.length > 0 ? 'inline' : 'none';
-
-    if (list.length === 0) {
-      el.innerHTML = '<div class="autoscan-empty">No surnames queued. Add some above.</div>';
-      return;
-    }
-    el.innerHTML = list.map((s, i) => `
-      <div class="autoscan-item">
-        <span class="autoscan-rank">#${i+1}</span>
-        <span class="autoscan-name">${s}</span>
-        <button class="autoscan-remove" onclick="autoscanRemove('${s.replace(/'/g,"\\'")}')">✕</button>
-      </div>`).join('');
-  }
-
-  async function autoscanAddTop() {
-    const inp = document.getElementById('autoscan-input');
-    const s = inp.value.trim();
-    if (!s) return;
-    const r = await fetch('/autoscan-add-top?surname=' + encodeURIComponent(s));
-    const d = await r.json();
-    inp.value = '';
-    renderAutoscanList(d.list || []);
-  }
-  async function autoscanAddBottom() {
-    const inp = document.getElementById('autoscan-input');
-    const s = inp.value.trim();
-    if (!s) return;
-    const r = await fetch('/autoscan-add-bottom?surname=' + encodeURIComponent(s));
-    const d = await r.json();
-    inp.value = '';
-    renderAutoscanList(d.list || []);
-  }
-  async function autoscanRemove(s) {
-    const r = await fetch('/autoscan-remove?surname=' + encodeURIComponent(s));
-    const d = await r.json();
-    renderAutoscanList(d.list || []);
-  }
-
-  async function autoscanStart() {
-    await fetch('/autoscan-start');
-    document.getElementById('autoscan-run-btn').style.display = 'none';
-    document.getElementById('autoscan-stop-btn').style.display = 'inline-block';
-    document.getElementById('autoscan-status-txt').textContent = 'Running...';
-    showToast('🤖 Auto scan started');
-    if (!autoscanPollTimer) {
-      autoscanPollTimer = setInterval(refreshAutoscanHistory, 3000);
-    }
-  }
-  async function autoscanStop() {
-    await fetch('/autoscan-stop');
+// ══════════════════════════════════════════════════════
+// AUTO SCANNER
+// ══════════════════════════════════════════════════════
+let autoscanPollTimer = null;
+function openAutoScanner() {
+  refreshAutoscanList(); refreshAutoscanHistory();
+  document.getElementById('autoscanner-panel').classList.add('open');
+  document.getElementById('autoscanner-overlay').classList.add('open');
+  if (!autoscanPollTimer) autoscanPollTimer = setInterval(refreshAutoscanHistory, 5000);
+}
+function closeAutoScanner() {
+  document.getElementById('autoscanner-panel').classList.remove('open');
+  document.getElementById('autoscanner-overlay').classList.remove('open');
+  if (autoscanPollTimer) { clearInterval(autoscanPollTimer); autoscanPollTimer = null; }
+}
+async function refreshAutoscanList() {
+  const r = await fetch('/autoscan-list');
+  const d = await r.json();
+  renderAutoscanList(d.list || []);
+}
+function renderAutoscanList(list) {
+  const el = document.getElementById('autoscan-list');
+  const badge = document.getElementById('autoscan-badge');
+  badge.textContent = list.length; badge.style.display = list.length > 0 ? 'inline' : 'none';
+  if (!list.length) { el.innerHTML = '<div class="autoscan-empty">No surnames queued. Add some above.</div>'; return; }
+  el.innerHTML = list.map((s, i) => `
+    <div class="autoscan-item">
+      <span class="autoscan-rank">#${i+1}</span>
+      <span class="autoscan-name">${s}</span>
+      <button class="autoscan-remove" onclick="autoscanRemove('${s.replace(/'/g,"\\'")}')">✕</button>
+    </div>`).join('');
+}
+async function autoscanAddTop() {
+  const inp = document.getElementById('autoscan-input');
+  const s = inp.value.trim(); if (!s) return;
+  const d = await (await fetch('/autoscan-add-top?surname=' + encodeURIComponent(s))).json();
+  inp.value = ''; renderAutoscanList(d.list || []);
+}
+async function autoscanAddBottom() {
+  const inp = document.getElementById('autoscan-input');
+  const s = inp.value.trim(); if (!s) return;
+  const d = await (await fetch('/autoscan-add-bottom?surname=' + encodeURIComponent(s))).json();
+  inp.value = ''; renderAutoscanList(d.list || []);
+}
+async function autoscanRemove(s) {
+  const d = await (await fetch('/autoscan-remove?surname=' + encodeURIComponent(s))).json();
+  renderAutoscanList(d.list || []);
+}
+async function autoscanStart() {
+  await fetch('/autoscan-start');
+  document.getElementById('autoscan-run-btn').style.display = 'none';
+  document.getElementById('autoscan-stop-btn').style.display = 'inline-block';
+  document.getElementById('autoscan-status-txt').textContent = 'Running...';
+  showToast('🤖 Auto scan started');
+  if (!autoscanPollTimer) autoscanPollTimer = setInterval(refreshAutoscanHistory, 3000);
+}
+async function autoscanStop() {
+  await fetch('/autoscan-stop');
+  document.getElementById('autoscan-run-btn').style.display = 'inline-block';
+  document.getElementById('autoscan-stop-btn').style.display = 'none';
+  document.getElementById('autoscan-status-txt').textContent = 'Stopped.';
+  showToast('🤖 Auto scan stopped');
+}
+async function refreshAutoscanHistory() {
+  const d = await (await fetch('/autoscan-results')).json();
+  if (!d.running) {
     document.getElementById('autoscan-run-btn').style.display = 'inline-block';
     document.getElementById('autoscan-stop-btn').style.display = 'none';
-    document.getElementById('autoscan-status-txt').textContent = 'Stopped.';
-    showToast('🤖 Auto scan stopped');
+    if (document.getElementById('autoscan-status-txt').textContent === 'Running...')
+      document.getElementById('autoscan-status-txt').textContent = '';
   }
+  const el = document.getElementById('autoscan-history');
+  if (!d.results || !d.results.length) { el.innerHTML = '<div class="autoscan-empty">No results yet.</div>'; return; }
+  el.innerHTML = d.results.map(h => `
+    <div class="autoscan-hist-item">
+      <div class="autoscan-hist-surname">${h.surname.toUpperCase()}
+        <button class="history-rescan" onclick="closeAutoScanner();rescan('${h.surname}')">↻ View</button>
+      </div>
+      <div class="history-time">🕐 ${h.time_str}</div>
+      <div class="history-stats">
+        <span class="h-stat">${h.total} profiles</span>
+        <span class="h-stat">${h.families} families</span>
+        <span class="h-stat green">${h.enrolled} need screening</span>
+        ${h.failed > 0 ? `<span class="h-stat red">${h.failed} failed</span>` : ''}
+      </div>
+    </div>`).join('');
+}
 
-  async function refreshAutoscanHistory() {
-    const r = await fetch('/autoscan-results');
-    const d = await r.json();
+// ══════════════════════════════════════════════════════
+// STOP / START
+// ══════════════════════════════════════════════════════
+async function stopSearch() {
+  await fetch('/stop');
+  document.getElementById('stop-btn').style.display = 'none';
+  document.getElementById('scan-btn').disabled = false;
+  document.getElementById('prog-wrap').style.display = 'none';
+  stopETA(false);
+  showToast('⛔ Search stopped');
+}
 
-    // Update running state
-    if (!d.running) {
-      document.getElementById('autoscan-run-btn').style.display = 'inline-block';
-      document.getElementById('autoscan-stop-btn').style.display = 'none';
-      if (document.getElementById('autoscan-status-txt').textContent === 'Running...') {
-        document.getElementById('autoscan-status-txt').textContent = '';
+async function startScan() {
+  const s = document.getElementById('scan-input').value.trim();
+  if (!s) return;
+  showSearchMode();
+  scanStartTime = null; lastEstimate = null; lastEstimateTime = null;
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  document.getElementById('eta-timer').textContent = '';
+  document.getElementById('scan-btn').disabled = true;
+  document.getElementById('stop-btn').style.display = 'inline-block';
+  document.getElementById('prog-wrap').style.display = 'block';
+  document.getElementById('filter-area').style.display = 'none';
+  document.getElementById('results').innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Collecting profiles from Unite Us…</p></div>';
+  ['s-total','s-families','s-enrolled','s-failed'].forEach(id => document.getElementById(id).textContent = '—');
+  await fetch('/scan?q=' + encodeURIComponent(s));
+  if (polling) clearInterval(polling);
+  polling = setInterval(fetchResults, 2500);
+  fetchResults();
+}
+
+// ══════════════════════════════════════════════════════
+// MAIN FETCH LOOP
+// ══════════════════════════════════════════════════════
+async function fetchResults() {
+  try {
+    const data = await (await fetch('/data')).json();
+    const pill = document.getElementById('status-bar');
+    document.getElementById('status-text').textContent = data.status;
+
+    if (data.searching) {
+      pill.className = 'status-pill searching';
+      document.getElementById('status-icon').outerHTML = '<span id="status-icon" class="spinner"></span>';
+      document.getElementById('stop-btn').style.display = 'inline-block';
+      document.getElementById('scan-btn').disabled = true;
+      if (data.scan?.total && data.scan.scanned > 0) {
+        if (!timerInterval) startETA();
+        updateETAEstimate(data.scan.scanned, data.scan.total);
       }
+    } else if (data.status.includes('Stopped')) {
+      pill.className = 'status-pill stopped';
+      document.getElementById('status-icon').outerHTML = '<span id="status-icon">⛔</span>';
+      document.getElementById('scan-btn').disabled = false;
+      document.getElementById('stop-btn').style.display = 'none';
+      document.getElementById('prog-wrap').style.display = 'none';
+      stopETA(false);
+      if (polling) { clearInterval(polling); polling = null; }
+    } else if (data.status.includes('Done') || data.status.includes('Waiting')) {
+      pill.className = data.status.includes('Done') ? 'status-pill done' : 'status-pill idle';
+      document.getElementById('status-icon').outerHTML = data.status.includes('Done') ? '<span id="status-icon">✓</span>' : '<span id="status-icon">●</span>';
+      document.getElementById('scan-btn').disabled = false;
+      document.getElementById('stop-btn').style.display = 'none';
+      if (data.status.includes('Done')) { document.getElementById('prog-wrap').style.display = 'none'; stopETA(true); }
+      if (polling) { clearInterval(polling); polling = null; }
+    } else {
+      pill.className = 'status-pill idle';
+      document.getElementById('status-icon').outerHTML = '<span id="status-icon">●</span>';
     }
 
-    const el = document.getElementById('autoscan-history');
-    if (!d.results || d.results.length === 0) {
-      el.innerHTML = '<div class="autoscan-empty">No autoscan results yet.</div>';
-      return;
-    }
-    el.innerHTML = d.results.map(h => `
-      <div class="autoscan-hist-item">
-        <div class="autoscan-hist-surname">
-          ${h.surname.toUpperCase()}
-          <button class="history-rescan" onclick="closeAutoScanner();rescan('${h.surname}')">↻ View</button>
-        </div>
-        <div class="history-time">🕐 ${h.time_str}</div>
-        <div class="history-stats">
-          <span class="h-stat">${h.total} profiles</span>
-          <span class="h-stat">${h.families} families</span>
-          <span class="h-stat green">${h.enrolled} need screening</span>
-          ${h.failed > 0 ? `<span class="h-stat red">${h.failed} failed</span>` : ''}
-        </div>
-      </div>`).join('');
-  }
+    if (!data.scan?.profiles) return;
+    currentData = data.scan;
 
-  // Input: enter key
-  document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('autoscan-input').addEventListener('keydown', e => {
-      if (e.key === 'Enter') autoscanAddBottom();
+    const { profiles, total, scanned, phone_groups, failed, from_cache } = data.scan;
+    document.getElementById('s-total').textContent   = total  || '—';
+    document.getElementById('s-failed').textContent  = failed ? failed.length : 0;
+
+    const familyCount        = phone_groups ? Object.values(phone_groups).filter(g => g.length > 1).length : 0;
+    const enrolledZeroScreen = profiles.filter(p => p.checked && p.any_enrolled && p.zero_screening).length;
+    document.getElementById('s-families').textContent = familyCount;
+    document.getElementById('s-enrolled').textContent = enrolledZeroScreen;
+
+    // Badge
+    fetch('/history').then(r => r.json()).then(d => {
+      const badge = document.getElementById('history-badge');
+      const count = d.history?.length || 0;
+      badge.textContent = count; badge.style.display = count > 0 ? 'inline' : 'none';
     });
+
+    if (total && scanned !== undefined) {
+      const pct = Math.round((scanned / total) * 100);
+      document.getElementById('prog-bar').style.width = pct + '%';
+      document.getElementById('prog-pct').textContent = pct + '%';
+      document.getElementById('prog-lbl').textContent = `Scanned ${scanned} of ${total}${from_cache ? ' · from cache' : ''}`;
+    }
+
+    if (profiles.length > 0) {
+      document.getElementById('filter-area').style.display = 'block';
+      setTimeout(updateStickyOffset, 50);
+      renderResults();
+    }
+
+    if (failed?.length && !data.searching) renderFailed(failed);
+  } catch(e) { console.error(e); }
+}
+
+// ══════════════════════════════════════════════════════
+// RENDER RESULTS
+// ══════════════════════════════════════════════════════
+function renderResults() {
+  if (!currentData) return;
+  const { surname, profiles, phone_groups, from_cache } = currentData;
+  const nameQ   = (document.getElementById('name-search').value || '').toLowerCase();
+  const numQ    = (document.getElementById('number-search').value || '').replace(/[^0-9]/g, '');
+
+  const filtered = profiles.filter(p => {
+    if (nameQ && !p.name.toLowerCase().includes(nameQ)) return false;
+    if (numQ  && !(p.raw_phone || '').replace(/[^0-9]/g, '').includes(numQ)) return false;
+    if (currentFilter === 'not_enrolled')   return p.checked && !p.any_enrolled;
+    if (currentFilter === 'enrolled')       return p.checked && p.any_enrolled;
+    if (currentFilter === 'zero_screen')    return p.checked && p.zero_screening;
+    if (currentFilter === 'has_screen')     return p.checked && !p.zero_screening;
+    if (currentFilter === 'need_screening') return p.checked && p.any_enrolled && p.zero_screening;
+    if (currentFilter === 'family') {
+      const grp = phone_groups || {};
+      return p.raw_phone && grp[p.raw_phone]?.length > 1;
+    }
+    return true;
   });
 
-  // ══════════════════════════════════════════════════════
-  // STOP / START SCAN
-  // ══════════════════════════════════════════════════════
-  async function stopSearch() {
-    await fetch('/stop');
-    document.getElementById('stop-btn').style.display = 'none';
-    document.getElementById('scan-btn').disabled = false;
-    document.getElementById('prog-wrap').style.display = 'none';
-    stopETA(false);
-    showToast('Search stopped');
+  document.getElementById('filter-count').textContent = `${filtered.length} of ${profiles.length} profiles`;
+
+  const phoneMap = {};
+  for (const p of filtered) {
+    const key = p.raw_phone || '__none__' + p.name;
+    if (!phoneMap[key]) phoneMap[key] = [];
+    phoneMap[key].push(p);
   }
 
-  async function startScan() {
-    const s = document.getElementById('scan-input').value.trim();
-    if (!s) return;
-    scanStartTime = null; lastEstimate = null; lastEstimateTime = null;
-    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-    document.getElementById('eta-timer').textContent = '';
-    document.getElementById('scan-btn').disabled = true;
-    document.getElementById('stop-btn').style.display = 'inline-block';
-    document.getElementById('prog-wrap').style.display = 'block';
-    document.getElementById('filter-area').style.display = 'none';
-    document.getElementById('results').innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Collecting profiles from Unite Us...</p></div>';
-    ['s-total','s-families','s-enrolled','s-failed'].forEach(id => document.getElementById(id).textContent = '—');
-    await fetch('/scan?q=' + encodeURIComponent(s));
-    if (polling) clearInterval(polling);
-    polling = setInterval(fetchResults, 2500);
-    fetchResults();
-  }
+  const pg = phone_groups || {};
+  const families = Object.entries(phoneMap).filter(([k]) => !k.startsWith('__none__') && pg[k]?.length > 1);
+  const solos    = Object.entries(phoneMap).filter(([k]) => k.startsWith('__none__') || !pg[k] || pg[k].length === 1);
 
-  // ══════════════════════════════════════════════════════
-  // MAIN FETCH / POLL
-  // ══════════════════════════════════════════════════════
-  async function fetchResults() {
-    try {
-      const res = await fetch('/data');
-      const data = await res.json();
-      const pill = document.getElementById('status-bar');
-      document.getElementById('status-text').textContent = data.status;
+  let html = `<div class="section-heading">
+    Results for <span style="color:var(--accent-red);margin-left:4px">${(surname||'').toUpperCase()}</span>
+    ${from_cache ? '<span class="cached-badge">⚡ Cached</span>' : ''}
+  </div>
+  <div class="list-header col-grid">
+    <div>Name</div><div>Phone</div><div>DOB</div><div>Age</div>
+    <div>Medicaid ID</div><div>Enrollment</div><div>Screenings</div><div>Actions</div>
+  </div>`;
 
-      if (data.searching) {
-        pill.className = 'status-pill searching';
-        document.getElementById('status-icon').outerHTML = '<span id="status-icon" class="spinner"></span>';
-        document.getElementById('stop-btn').style.display = 'inline-block';
-        document.getElementById('scan-btn').disabled = true;
-        if (data.scan && data.scan.total && data.scan.scanned > 0) {
-          if (!timerInterval) startETA();
-          updateETAEstimate(data.scan.scanned, data.scan.total);
-        }
-      } else if (data.status.includes('Stopped')) {
-        pill.className = 'status-pill stopped';
-        document.getElementById('status-icon').outerHTML = '<span id="status-icon">⛔</span>';
-        document.getElementById('scan-btn').disabled = false;
-        document.getElementById('stop-btn').style.display = 'none';
-        document.getElementById('prog-wrap').style.display = 'none';
-        stopETA(false);
-        if (polling) { clearInterval(polling); polling = null; }
-      } else if (data.status.includes('Done') || data.status.includes('Waiting')) {
-        pill.className = data.status.includes('Done') ? 'status-pill done' : 'status-pill idle';
-        document.getElementById('status-icon').outerHTML = data.status.includes('Done') ? '<span id="status-icon">✓</span>' : '<span id="status-icon">●</span>';
-        document.getElementById('scan-btn').disabled = false;
-        document.getElementById('stop-btn').style.display = 'none';
-        if (data.status.includes('Done')) { document.getElementById('prog-wrap').style.display = 'none'; stopETA(true); }
-        if (polling) { clearInterval(polling); polling = null; }
-      } else {
-        pill.className = 'status-pill idle';
-        document.getElementById('status-icon').outerHTML = '<span id="status-icon">●</span>';
-      }
-
-      if (!data.scan || !data.scan.profiles) return;
-      currentData = data.scan;
-
-      const { profiles, total, scanned, phone_groups, failed, from_cache } = data.scan;
-      document.getElementById('s-total').textContent = total || '—';
-      document.getElementById('s-failed').textContent = failed ? failed.length : 0;
-
-      const familyCount        = phone_groups ? Object.values(phone_groups).filter(g => g.length > 1).length : 0;
-      const enrolledZeroScreen = profiles.filter(p => p.checked && p.any_enrolled && p.zero_screening).length;
-      document.getElementById('s-families').textContent = familyCount;
-      document.getElementById('s-enrolled').textContent = enrolledZeroScreen;
-
-      fetch('/history').then(r => r.json()).then(d => {
-        const badge = document.getElementById('history-badge');
-        const count = d.history ? d.history.length : 0;
-        badge.textContent = count;
-        badge.style.display = count > 0 ? 'inline' : 'none';
-      });
-
-      if (total && scanned !== undefined) {
-        const pct = Math.round((scanned / total) * 100);
-        document.getElementById('prog-bar').style.width = pct + '%';
-        document.getElementById('prog-pct').textContent = pct + '%';
-        const cacheNote = from_cache ? ' · from cache' : '';
-        document.getElementById('prog-lbl').textContent = `Scanned ${scanned} of ${total} profiles${cacheNote}`;
-      }
-
-      if (profiles && profiles.length > 0) {
-        document.getElementById('filter-area').style.display = 'block';
-        setTimeout(updateStickyOffset, 50);
-        renderResults();
-      }
-
-      if (failed && failed.length > 0 && !data.searching) renderFailed(failed);
-
-    } catch(e) { console.error(e); }
-  }
-
-  // ══════════════════════════════════════════════════════
-  // RENDER
-  // ══════════════════════════════════════════════════════
-  function renderResults() {
-    if (!currentData) return;
-    const { surname, profiles, phone_groups, from_cache } = currentData;
-    const nameQuery   = (document.getElementById('name-search').value   || '').toLowerCase();
-    const numberQuery = (document.getElementById('number-search').value || '').replace(/[^0-9]/g, '');
-
-    let filtered = profiles.filter(p => {
-      if (nameQuery   && !p.name.toLowerCase().includes(nameQuery)) return false;
-      if (numberQuery && !(p.raw_phone || '').replace(/[^0-9]/g, '').includes(numberQuery)) return false;
-      if (currentFilter === 'not_enrolled')   return p.checked && !p.any_enrolled;
-      if (currentFilter === 'enrolled')       return p.checked && p.any_enrolled;
-      if (currentFilter === 'zero_screen')    return p.checked && p.zero_screening;
-      if (currentFilter === 'has_screen')     return p.checked && !p.zero_screening;
-      if (currentFilter === 'need_screening') return p.checked && p.any_enrolled && p.zero_screening;
-      if (currentFilter === 'family') {
-        const grp = phone_groups || {};
-        return p.raw_phone && grp[p.raw_phone] && grp[p.raw_phone].length > 1;
-      }
-      return true;
-    });
-
-    document.getElementById('filter-count').textContent = `${filtered.length} of ${profiles.length} profiles`;
-
-    const phoneMap = {};
-    for (const p of filtered) {
-      const key = p.raw_phone || '__none__' + p.name;
-      if (!phoneMap[key]) phoneMap[key] = [];
-      phoneMap[key].push(p);
-    }
-
-    const pg = phone_groups || {};
-    const families = Object.entries(phoneMap).filter(([k, v]) => !k.startsWith('__none__') && pg[k] && pg[k].length > 1);
-    const solos    = Object.entries(phoneMap).filter(([k, v]) => k.startsWith('__none__') || !pg[k] || pg[k].length === 1);
-
-    let html = `<div class="section-heading">
-      Results for <span style="color:var(--red);margin-left:4px">${(surname||'').toUpperCase()}</span>
-      ${from_cache ? '<span class="cached-badge">⚡ Cached</span>' : ''}
-    </div>`;
-
-    html += `<div class="list-header col-grid">
-      <div>Name</div><div>Phone</div><div>DOB</div><div>Age</div>
-      <div>Medicaid ID</div><div>Enrollment</div><div>Screenings</div><div>Actions</div>
-    </div>`;
-
-    for (const [phone, members] of families) {
-      const safePhone = phone.replace(/'/g, "\\'");
-      html += `<div class="family-group">
-        <div class="family-group-header">
-          <div class="family-dot"></div>
-          Family Group &nbsp;·&nbsp;
-          <span class="family-phone">${phone}</span>
-          <span class="fam-count">${members.length}</span>
-          <button class="fam-copy" onclick="copyPhone('${safePhone}')">📋 Copy #</button>
-        </div>`;
-      for (const p of members) html += renderPersonRow(p, false);
-      html += '</div>';
-    }
-
-    for (const [, members] of solos) {
-      html += '<div class="solo-group">' + renderPersonRow(members[0], true) + '</div>';
-    }
-
-    if (filtered.length === 0) {
-      html += '<div class="empty-state"><div class="empty-icon">🔍</div><p>No profiles match the current filter.</p></div>';
-    }
-
-    document.getElementById('results').innerHTML = html;
-  }
-
-  function renderFailed(failed) {
-    let html = `<div class="failed-section">
-      <div class="failed-header">⚠️ ${failed.length} profile${failed.length > 1 ? 's' : ''} failed to load</div>`;
-    for (const f of failed) {
-      html += `<div class="failed-row">
-        <div class="failed-name">${f.name}</div>
-        <div class="failed-err">${f.error || 'Unknown error'}</div>
+  for (const [phone, members] of families) {
+    const sp = phone.replace(/'/g, "\\'");
+    html += `<div class="family-group">
+      <div class="family-group-header">
+        <div class="family-dot"></div>
+        Family Group &nbsp;·&nbsp;
+        <span class="family-phone">${phone}</span>
+        <span class="fam-count">${members.length}</span>
+        <button class="fam-copy" onclick="copyPhone('${sp}', this.closest('.family-group-header'))">📋 Copy #</button>
       </div>`;
-    }
+    for (const p of members) html += renderPersonRow(p, false);
     html += '</div>';
-    document.getElementById('results').innerHTML += html;
+  }
+  for (const [, members] of solos) {
+    html += '<div class="solo-group">' + renderPersonRow(members[0], true) + '</div>';
+  }
+  if (!filtered.length) html += '<div class="empty-state"><div class="empty-icon">🔍</div><p>No profiles match the current filter.</p></div>';
+
+  document.getElementById('results').innerHTML = html;
+}
+
+function renderFailed(failed) {
+  let html = `<div class="failed-section">
+    <div class="failed-header">⚠️ ${failed.length} profile${failed.length > 1 ? 's' : ''} failed to load</div>`;
+  for (const f of failed) {
+    html += `<div class="failed-row"><div class="failed-name">${f.name}</div><div class="failed-err">${f.error || 'Unknown error'}</div></div>`;
+  }
+  html += '</div>';
+  document.getElementById('results').innerHTML += html;
+}
+
+function calcAge(dob) {
+  if (!dob) return '—';
+  const parts = dob.split('/');
+  if (parts.length !== 3) return '—';
+  const birth = new Date(+parts[2], +parts[0]-1, +parts[1]);
+  if (isNaN(birth)) return '—';
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  if (today.getMonth() - birth.getMonth() < 0 || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate())) age--;
+  return age >= 0 ? age : '—';
+}
+
+function renderPersonRow(p, showPhoneCopy) {
+  let enrollBadge = '<span class="enroll-loading">Loading…</span>';
+  if (p.checked) {
+    const enrollUrl = p.uuid ? `https://app.uniteus.io/facesheet/${p.uuid}/profile` : '#';
+    enrollBadge = p.any_enrolled
+      ? `<a href="${enrollUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="enroll-yes">✓ Enrolled</span></a>`
+      : `<a href="${enrollUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="enroll-no">Not Enrolled</span></a>`;
+  }
+  let screenBadge = '<span class="screen-loading">Loading…</span>';
+  if (p.checked) {
+    const screenUrl = p.uuid ? `https://app.uniteus.io/facesheet/${p.uuid}/screenings` : '#';
+    screenBadge = p.zero_screening
+      ? `<a href="${screenUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="screen-zero">0 Screenings</span></a>`
+      : `<a href="${screenUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="screen-has">${p.screening_count || '?'}</span></a>`;
   }
 
-  function calcAge(dob) {
-    if (!dob) return '—';
-    const parts = dob.split('/');
-    if (parts.length !== 3) return '—';
-    const birth = new Date(+parts[2], +parts[0] - 1, +parts[1]);
-    if (isNaN(birth)) return '—';
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    const m = today.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-    return age >= 0 ? age : '—';
+  // Row colour class:
+  // — not enrolled at all  → row-warn-red   (yellow→red gradient, high visibility)
+  // — enrolled + 1+ screens→ row-ok-teal    (teal, "good but not priority")
+  // — enrolled + 0 screens → row-priority   (amber, "needs action")
+  // — default (unchecked)  → plain
+  let rowClass = '';
+  if (p.checked) {
+    if (!p.any_enrolled) {
+      rowClass = ' row-warn-red';
+    } else if (!p.zero_screening) {
+      rowClass = ' row-ok-teal';
+    } else {
+      rowClass = ' row-priority';
+    }
   }
 
-  function renderPersonRow(p, showPhoneCopy) {
-    let enrollBadge = '<span class="enroll-loading">Loading...</span>';
-    if (p.checked) {
-      const enrollUrl = p.uuid ? `https://app.uniteus.io/facesheet/${p.uuid}/profile` : '#';
-      enrollBadge = p.any_enrolled
-        ? `<a href="${enrollUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="enroll-yes" style="cursor:pointer">✓ Enrolled</span></a>`
-        : `<a href="${enrollUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="enroll-no" style="cursor:pointer">Not Enrolled</span></a>`;
-    }
-    let screenBadge = '<span class="screen-loading">Loading...</span>';
-    if (p.checked) {
-      const screenUrl = p.uuid ? `https://app.uniteus.io/facesheet/${p.uuid}/screenings` : '#';
-      screenBadge = p.zero_screening
-        ? `<a href="${screenUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="screen-zero" style="cursor:pointer">0 Screenings</span></a>`
-        : `<a href="${screenUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="screen-has" style="cursor:pointer">${p.screening_count || '?'}</span></a>`;
-    }
+  const age      = calcAge(p.dob);
+  const mID      = p.member_id || '—';
+  const safeName = p.name.replace(/'/g, "\\'");
+  const safeDob  = (p.dob || '').replace(/'/g, "\\'");
+  const safePhone= (p.raw_phone || '').replace(/'/g, "\\'");
+  const safeID   = mID.replace(/'/g, "\\'");
+  const noteText = p.uuid ? (serverNotes[p.uuid] || '') : '';
+  const hasNote  = noteText.length > 0;
 
-    const isPriority    = p.checked && !p.any_enrolled && p.zero_screening;
-    const hasScreenings = p.checked && !p.zero_screening;
-    const rowClass      = isPriority ? ' priority' : hasScreenings ? ' has-screenings' : '';
-    const age           = calcAge(p.dob);
-    const mID           = p.member_id || '—';
-    const safeName      = p.name.replace(/'/g, "\\'");
-    const safeDob       = (p.dob || '').replace(/'/g, "\\'");
-    const safePhone     = (p.raw_phone || '').replace(/'/g, "\\'");
-    const safeID        = mID.replace(/'/g, "\\'");
-    const noteText      = p.uuid ? (serverNotes[p.uuid] || '') : '';
-    const hasNote       = noteText.length > 0;
+  const quickLinkBtn = p.uuid
+    ? `<a href="https://app.uniteus.io/link/uuids/${p.uuid}" target="_blank" rel="noopener" class="quick-link-btn" title="Quick Link">🔗</a>`
+    : '';
+  const noteBtn = p.uuid
+    ? `<button class="note-btn ${hasNote ? 'has-note' : ''}" onclick="openNote('${p.uuid}','${safeName}')">${hasNote ? '📝' : '+'} note</button>`
+    : '';
 
-    // Quick Link button — opens uniteus link/uuids/[profile_id]
-    const quickLinkBtn = p.uuid
-      ? `<a href="https://app.uniteus.io/link/uuids/${p.uuid}" target="_blank" rel="noopener" class="quick-link-btn" title="Open Quick Link">🔗</a>`
-      : '';
-
-    // Note button
-    const noteBtn = p.uuid
-      ? `<button class="note-btn ${hasNote ? 'has-note' : ''}" onclick="openNote('${p.uuid}','${safeName}')">${hasNote ? '📝' : '+'} note</button>`
-      : '';
-
-    return `<div class="person-row col-grid${rowClass}">
-      <div class="person-name">
-        ${p.uuid
-          ? `<a href="https://app.uniteus.io/facesheet/${p.uuid}/" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;border-bottom:1.5px solid var(--primary-mid);" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='inherit'">${p.name}</a>`
-          : p.name
-        }
-        <button class="cp" onclick="copyText('${safeName}','name')">copy</button>
-      </div>
-      <div class="person-phone">
-        ${p.raw_phone || '—'}
-        ${showPhoneCopy && p.raw_phone ? `<button class="cp" onclick="copyPhone('${safePhone}')">copy</button>` : ''}
-      </div>
-      <div class="person-dob">
-        ${p.dob || '—'}
-        ${p.dob ? `<button class="cp" onclick="copyText('${safeDob}','DOB')">copy</button>` : ''}
-      </div>
-      <div class="person-age">${age !== '—' ? age + ' yr' : '—'}</div>
-      <div style="font-size:0.83rem;color:var(--text);display:flex;align-items:center;gap:4px;">
-        <span>${mID}</span>
-        ${mID !== '—' ? `<button class="cp" onclick="copyText('${safeID}','ID')">copy</button>` : ''}
-      </div>
-      <div>${enrollBadge}</div>
-      <div>${screenBadge}</div>
-      <div class="row-actions">
-        <span class="pg-badge">${p.page}</span>
-        ${quickLinkBtn}
-        ${noteBtn}
-      </div>
+  // Pass 'this.closest(.person-row)' via the onclick for accurate row reference
+  return `<div class="person-row col-grid${rowClass}">
+    <div class="person-name">
+      ${p.uuid
+        ? `<a href="https://app.uniteus.io/facesheet/${p.uuid}/" target="_blank" rel="noopener" class="name-link">${p.name}</a>`
+        : p.name}
+      <button class="cp" onclick="copyText('${safeName}','name',this.closest('.person-row'))">copy</button>
     </div>
-    ${hasNote ? `<div class="note-text col-grid" style="display:block">📝 ${noteText}</div>` : ''}`;
-  }
+    <div class="person-phone">
+      ${p.raw_phone || '—'}
+      ${showPhoneCopy && p.raw_phone ? `<button class="cp" onclick="copyPhone('${safePhone}',this.closest('.person-row'))">copy</button>` : ''}
+    </div>
+    <div class="person-dob">
+      ${p.dob || '—'}
+      ${p.dob ? `<button class="cp" onclick="copyText('${safeDob}','DOB',this.closest('.person-row'))">copy</button>` : ''}
+    </div>
+    <div class="person-age">${age !== '—' ? age + ' yr' : '—'}</div>
+    <div class="person-mid">
+      <span>${mID}</span>
+      ${mID !== '—' ? `<button class="cp" onclick="copyText('${safeID}','ID',this.closest('.person-row'))">copy</button>` : ''}
+    </div>
+    <div>${enrollBadge}</div>
+    <div>${screenBadge}</div>
+    <div class="row-actions">
+      <span class="pg-badge">${p.page}</span>
+      ${quickLinkBtn}${noteBtn}
+    </div>
+  </div>
+  ${hasNote ? `<div class="note-text col-grid">📝 ${noteText}</div>` : ''}`;
+}
 
-  // ══════════════════════════════════════════════════════
-  // INIT
-  // ══════════════════════════════════════════════════════
-  document.getElementById('scan-input').addEventListener('keydown', e => { if (e.key === 'Enter') startScan(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeNote(); });
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeNote(); });
+window.addEventListener('scroll', () => {
+  document.getElementById('scroll-top-btn').classList.toggle('visible', window.scrollY > 300);
+});
 
-  // Scroll to top button
-  window.addEventListener('scroll', () => {
-    const btn = document.getElementById('scroll-top-btn');
-    if (window.scrollY > 300) btn.classList.add('visible');
-    else btn.classList.remove('visible');
-  });
+loadNotes();
+setInterval(fetchResults, 4000);
 
-  // Load notes from server on startup
-  loadNotes();
-  setInterval(fetchResults, 4000);
-
-  fetch('/history').then(r => r.json()).then(d => {
-    const count = d.history ? d.history.length : 0;
-    const badge = document.getElementById('history-badge');
-    badge.textContent = count;
-    badge.style.display = count > 0 ? 'inline' : 'none';
-  });
-
-  fetch('/autoscan-list').then(r => r.json()).then(d => {
-    const list = d.list || [];
-    const badge = document.getElementById('autoscan-badge');
-    badge.textContent = list.length;
-    badge.style.display = list.length > 0 ? 'inline' : 'none';
-  });
-
-  setTimeout(updateStickyOffset, 200);
+fetch('/history').then(r => r.json()).then(d => {
+  const count = d.history?.length || 0;
+  const badge = document.getElementById('history-badge');
+  badge.textContent = count; badge.style.display = count > 0 ? 'inline' : 'none';
+});
+fetch('/autoscan-list').then(r => r.json()).then(d => {
+  const list = d.list || [];
+  const badge = document.getElementById('autoscan-badge');
+  badge.textContent = list.length; badge.style.display = list.length > 0 ? 'inline' : 'none';
+});
 </script>
 </body>
 </html>

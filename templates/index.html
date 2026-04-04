@@ -8,7 +8,289 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<!-- Red SVG Favicon -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23DC2626'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Arial Black,sans-serif' font-size='18' font-weight='900' fill='white'%3EU%3C/text%3E%3C/svg%3E">
 </head>
+<style>
+/* ═══════════════════════════════════════════════════════
+   STICKY TOP BAR
+═══════════════════════════════════════════════════════ */
+#sticky-top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  background: rgba(18, 33, 60, 0.97);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 4px 32px rgba(0,0,32,0.55), 0 1px 0 rgba(91,121,255,0.10);
+  padding-bottom: 8px;
+}
+/* Header inside sticky — no double border */
+#sticky-top-bar .header {
+  position: static;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  border-bottom: none;
+}
+/* Search row inside sticky */
+#sticky-top-bar .search-row {
+  margin-bottom: 0 !important;
+  padding: 8px 28px 0;
+}
+/* Progress inside sticky */
+#sticky-top-bar .progress-wrap {
+  margin: 6px 28px 0;
+}
+/* Filter bar inside sticky — no extra sticky top offset */
+#sticky-top-bar #filter-area {
+  padding: 6px 28px 0;
+  display: none;
+  margin-bottom: 0;
+}
+#sticky-top-bar .filter-bar {
+  position: static !important;
+  top: unset !important;
+  z-index: unset !important;
+  margin-bottom: 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   COMPACT ROWS + CENTER TEXT
+═══════════════════════════════════════════════════════ */
+.person-row { padding: 6px 12px !important; }
+.col-grid > div {
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+}
+/* Keep name left-aligned */
+.person-name {
+  text-align: left !important;
+  justify-content: flex-start !important;
+}
+.list-header > div { text-align: center; justify-content: center; }
+
+/* ═══════════════════════════════════════════════════════
+   ROW STATUS COLORS — Solid backgrounds
+═══════════════════════════════════════════════════════ */
+
+/* NOT ENROLLED — solid red tint, very visible */
+.person-row.row-not-enrolled {
+  background: rgba(220, 38, 38, 0.16) !important;
+  border-left: 3px solid #EF4444 !important;
+}
+.person-row.row-not-enrolled:hover {
+  background: rgba(220, 38, 38, 0.24) !important;
+}
+
+/* HAS SCREENINGS (1+) — solid teal tint */
+.person-row.row-has-screenings {
+  background: rgba(13, 207, 234, 0.11) !important;
+  border-left: 3px solid var(--teal) !important;
+}
+.person-row.row-has-screenings:hover {
+  background: rgba(13, 207, 234, 0.18) !important;
+}
+
+/* ACTIVE COPY ROW — purple highlight, persists until another row's copy is clicked */
+.person-row.copy-active {
+  background: rgba(139, 92, 246, 0.22) !important;
+  border-left: 3px solid #8B5CF6 !important;
+  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.20);
+}
+.person-row.copy-active:hover {
+  background: rgba(139, 92, 246, 0.30) !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   GLOBAL NOTEPAD PANEL
+═══════════════════════════════════════════════════════ */
+#notepad-panel {
+  display: none;
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: 370px;
+  background: rgba(20, 38, 68, 0.95);
+  box-shadow: var(--shadow-lg), -1px 0 0 var(--border);
+  z-index: 100;
+  border-left: 1px solid var(--border);
+  animation: slideIn 0.25s cubic-bezier(0.4,0,0.2,1);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  flex-direction: column;
+}
+#notepad-panel.open { display: flex; }
+
+.notepad-header {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(22, 40, 70, 0.98);
+  backdrop-filter: blur(20px);
+  flex-shrink: 0;
+}
+.notepad-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.notepad-subtitle {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  font-weight: 400;
+  margin-top: 2px;
+}
+.notepad-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 22px;
+  gap: 10px;
+  overflow: hidden;
+  min-height: 0;
+}
+#global-notepad-textarea {
+  flex: 1;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.86rem;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  color: var(--text);
+  background: var(--surface-2);
+  line-height: 1.65;
+  transition: var(--transition);
+  min-height: 0;
+}
+#global-notepad-textarea:focus {
+  border-color: var(--primary);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px rgba(91,121,255,0.13);
+}
+#global-notepad-textarea::placeholder { color: var(--text-3); }
+.notepad-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+.notepad-char-count { font-size: 0.73rem; color: var(--text-3); }
+.notepad-saved-msg {
+  font-size: 0.78rem;
+  color: #4ADEA0;
+  font-weight: 600;
+  display: none;
+}
+.notepad-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.notepad-save-btn {
+  flex: 1;
+  padding: 9px;
+  background: linear-gradient(135deg, #4D6FFF, #7B90FF);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: var(--transition);
+  box-shadow: 0 2px 12px rgba(91,121,255,0.38);
+}
+.notepad-save-btn:hover { background: linear-gradient(135deg, #5B7DFF, #8EA3FF); }
+.notepad-clear-btn {
+  padding: 9px 14px;
+  background: var(--danger-light);
+  color: var(--danger);
+  border: 1px solid rgba(255,77,106,0.28);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: var(--transition);
+}
+.notepad-clear-btn:hover { background: rgba(255,77,106,0.22); }
+
+/* ═══════════════════════════════════════════════════════
+   PER-MEMBER NOTE STYLES (unchanged)
+═══════════════════════════════════════════════════════ */
+.note-btn {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  color: white; border-radius: 10px; font-size: 0.87rem; font-weight: 500;
+  padding: 2px 6px; cursor: pointer; margin-left: 4px; vertical-align: middle;
+  font-family: inherit; transition: var(--transition);
+}
+.note-btn:hover { background: var(--amber-light); border-color: #FDE68A; color: #2aad0a; }
+.note-btn.has-note { background: var(--amber-light); border-color: #FDE68A; color: #2aad0a; }
+
+.note-popup {
+  position: fixed; inset: 0; z-index: 300;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(15,23,42,0.3); backdrop-filter: blur(2px);
+  animation: fadeIn 0.15s ease;
+}
+.note-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px; width: 360px;
+  box-shadow: var(--shadow-lg); animation: slideIn 0.18s cubic-bezier(0.4,0,0.2,1);
+}
+.note-box-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.note-box-name { font-size: 0.88rem; font-weight: 700; color: var(--text); line-height: 1.3; flex: 1; padding-right: 10px; }
+.note-box-close { background: none; border: none; font-size: 1rem; color: var(--text-3); cursor: pointer; padding: 2px 6px; border-radius: 4px; font-family: inherit; flex-shrink: 0; }
+.note-box-close:hover { background: var(--surface-2); color: var(--text); }
+.note-textarea {
+  width: 100%; height: 100px; padding: 10px 12px;
+  border: 1.5px solid var(--border); border-radius: var(--radius);
+  font-size: 0.85rem; font-family: inherit; resize: none; outline: none;
+  color: var(--text); background: var(--surface); line-height: 1.5; transition: var(--transition);
+}
+.note-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(61,90,254,0.1); }
+.note-word-count { font-size: 0.73rem; color: var(--text-3); margin-top: 5px; text-align: right; }
+.note-word-count.over { color: var(--danger); font-weight: 600; }
+.note-actions { display: flex; gap: 8px; margin-top: 12px; }
+.note-save { flex: 1; padding: 9px; background: var(--primary); color: white; border: none; border-radius: var(--radius); font-size: 0.85rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: var(--transition); }
+.note-save:hover { background: #2947e8; }
+.note-save:disabled { background: var(--border-strong); color: var(--text-3); cursor: not-allowed; }
+.note-delete { padding: 9px 14px; background: var(--danger-light); color: var(--danger); border: 1px solid #FECACA; border-radius: var(--radius); font-size: 0.85rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: var(--transition); }
+.note-delete:hover { background: #FEE2E2; }
+.note-text {
+  grid-column: 1 / -1; margin: 2px 0 6px 0; padding: 6px 10px;
+  background: var(--amber-light); border-left: 3px solid var(--amber);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 0.78rem; color: #2aad0a; line-height: 1.5; word-break: break-word;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SCROLL-TO-TOP
+═══════════════════════════════════════════════════════ */
+.scroll-top-btn {
+  position: fixed; bottom: 28px; right: 28px;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--primary); color: white; border: none;
+  font-size: 20px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow); opacity: 0;
+  transform: translateY(20px) scale(0.8);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none; z-index: 150;
+}
+.scroll-top-btn.visible { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+.scroll-top-btn:hover { background: #2947e8; transform: translateY(-5px) scale(1.1); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+.scroll-top-btn:active { transform: translateY(-2px) scale(0.95); }
+</style>
+
 <body>
 <div class="bg-canvas">
   <div class="bg-waves"></div>
@@ -20,27 +302,32 @@
   <div class="bg-particles"></div>
 </div>
 
-<!-- ── Sticky Top Shell ── -->
-<div class="sticky-top-shell" id="sticky-top-shell">
+<!-- ══════════════════════════════════════════════════
+     STICKY TOP BAR
+═══════════════════════════════════════════════════ -->
+<div id="sticky-top-bar">
+
+  <!-- Header -->
   <header class="header">
     <div class="header-inner">
-      <!-- Logo is a button: goes home when idle, does nothing during scan -->
-      <button class="logo-btn" id="logo-btn" onclick="goHome()" title="Home">
+      <div class="logo">
         <div class="logo-icon">U</div>
         <span class="logo-text">Unite<span>Us</span> Tools</span>
-      </button>
+      </div>
       <div class="header-sep"></div>
+      <!-- Status pill in center of header -->
+      <div class="status-pill idle" id="status-bar" style="flex:1;margin:0 16px;">
+        <span id="status-icon">●</span>
+        <span id="status-text">Waiting for search...</span>
+        <span class="eta-text" id="eta-timer"></span>
+      </div>
       <div class="header-right">
-        <button class="nav-pill" onclick="openAutoScanner()" id="autoscanner-btn">
-          <span class="nav-icon">🤖</span> Auto Scanner
-          <span class="autoscan-badge" id="autoscan-badge" style="display:none">0</span>
-        </button>
-        <button class="nav-pill" onclick="openNotepad()" id="notepad-btn">
-          <span class="nav-icon">📓</span> Notepad
-        </button>
         <button class="nav-pill" onclick="openHistory()" id="history-btn">
           <span class="nav-icon">🕐</span> History
-          <span class="history-badge" id="history-badge" style="display:none">0</span>
+          <span class="history-badge" id="history-badge">0</span>
+        </button>
+        <button class="nav-pill" onclick="openNotepad()">
+          <span class="nav-icon">📋</span> Notepad
         </button>
         <button class="nav-pill" onclick="openSettings()">
           <span class="nav-icon">⚙️</span> Settings
@@ -49,35 +336,33 @@
     </div>
   </header>
 
-  <!-- Status bar — hidden until a scan starts -->
-  <div class="status-bar" id="status-bar-wrap" style="display:none">
-    <div class="status-pill idle" id="status-bar">
-      <span id="status-icon">●</span>
-      <span id="status-text">Waiting for search...</span>
-      <span class="eta-text" id="eta-timer"></span>
+  <!-- Search Row -->
+  <div class="search-row">
+    <div class="search-wrap">
+      <span class="search-icon">🔎</span>
+      <input type="text" id="scan-input" placeholder="Enter a surname to scan all profiles — e.g. Basnet, Singh, Torres..." />
     </div>
+    <button class="btn-primary" id="scan-btn" onclick="startScan()">Scan Profiles</button>
+    <button class="btn-stop" id="stop-btn" onclick="stopSearch()">⛔ Stop</button>
   </div>
 
-  <!-- Search row — hidden on homescreen, shown once user starts -->
-  <div class="container-search" id="search-area" style="display:none">
-    <div class="search-row">
-      <div class="search-wrap">
-        <span class="search-icon">🔎</span>
-        <input type="text" id="scan-input" placeholder="Enter a surname — e.g. Basnet, Singh, Torres..." />
-      </div>
-      <button class="btn-primary" id="scan-btn" onclick="startScan()">Scan</button>
-      <button class="btn-stop" id="stop-btn" onclick="stopSearch()">⛔ Stop</button>
+  <!-- Progress -->
+  <div class="progress-wrap" id="prog-wrap">
+    <div class="progress-header">
+      <div class="progress-lbl" id="prog-lbl">Scanning profiles...</div>
+      <div class="progress-pct" id="prog-pct">0%</div>
     </div>
+    <div class="progress-bg"><div class="progress-bar" id="prog-bar"></div></div>
   </div>
 
-  <!-- Filter bar -->
-  <div id="filter-area" style="display:none">
+  <!-- Filters -->
+  <div id="filter-area">
     <div class="filter-bar">
       <button class="filter-btn active" onclick="setFilter('need_screening', this)">🔔 Need Screening</button>
       <button class="filter-btn" onclick="setFilter('all', this)">All</button>
       <input class="filter-search" type="text" id="name-search" placeholder="Search name..." oninput="renderResults()" />
       <input class="filter-search" type="text" id="number-search" placeholder="Search phone..." oninput="renderResults()" />
-      <button class="filter-btn" onclick="setFilter('family', this)">Families</button>
+      <button class="filter-btn" onclick="setFilter('family', this)">Family Groups</button>
       <button class="filter-btn" onclick="setFilter('enrolled', this)">Enrolled</button>
       <button class="filter-btn" onclick="setFilter('not_enrolled', this)">Not Enrolled</button>
       <button class="filter-btn" onclick="setFilter('zero_screen', this)">No Screenings</button>
@@ -85,37 +370,13 @@
       <span class="filter-count" id="filter-count"></span>
     </div>
   </div>
-</div><!-- /.sticky-top-shell -->
 
-<!-- ══════════════════════════════════════════════════════
-     HOME SCREEN  (shown when nothing has been searched)
-════════════════════════════════════════════════════════ -->
-<div class="homescreen" id="homescreen">
-  <div class="home-hero">
-    <div class="home-logo-ring">
-      <div class="home-logo-inner">U</div>
-    </div>
-    <h1 class="home-title">Unite<span>Us</span> Tools</h1>
-    <p class="home-subtitle">Scan, screen, and track clients — faster.</p>
-    <div class="home-search-wrap">
-      <span class="home-search-icon">🔎</span>
-      <input type="text" id="home-scan-input" class="home-search-input"
-        placeholder="Enter a surname to begin scanning…" />
-      <button class="home-scan-btn" onclick="startScanFromHome()">Scan Profiles</button>
-    </div>
-    <div class="home-pills">
-      <span class="home-pill">👥 Family grouping</span>
-      <span class="home-pill">📋 One-click copy</span>
-      <span class="home-pill">🔗 Quick links</span>
-      <span class="home-pill">📝 Profile notes</span>
-      <span class="home-pill">🤖 Auto scanner</span>
-      <span class="home-pill">⚡ Cached results</span>
-    </div>
-  </div>
-</div>
+</div><!-- end #sticky-top-bar -->
 
-<!-- ── Main content area (hidden until scan) ── -->
-<div class="container" id="main-container" style="display:none">
+<!-- ══════════════════════════════════════════════════
+     MAIN CONTENT
+═══════════════════════════════════════════════════ -->
+<div class="container" style="padding-top: 16px;">
 
   <!-- Metric cards -->
   <div class="cards">
@@ -132,817 +393,671 @@
     <div class="card">
       <div class="card-icon">🔔</div>
       <div class="card-num" id="s-enrolled">—</div>
-      <div class="card-lbl">Need Screening</div>
+      <div class="card-lbl">Enrolled &amp; 0 Screenings</div>
     </div>
     <div class="card">
       <div class="card-icon">⚠️</div>
-      <div class="card-num danger-num" id="s-failed">—</div>
+      <div class="card-num red" id="s-failed">—</div>
       <div class="card-lbl">Failed</div>
     </div>
   </div>
 
-  <!-- Progress -->
-  <div class="progress-wrap" id="prog-wrap" style="display:none">
-    <div class="progress-header">
-      <div class="progress-lbl" id="prog-lbl">Scanning profiles...</div>
-      <div class="progress-pct" id="prog-pct">0%</div>
-    </div>
-    <div class="progress-bg"><div class="progress-bar" id="prog-bar"></div></div>
-  </div>
-
   <!-- Results -->
-  <div id="results"></div>
+  <div id="results">
+    <div class="empty-state">
+      <div class="empty-icon">🔎</div>
+      <p>Enter a surname above to scan all matching profiles.<br>Family members sharing a phone number will be grouped and checked first.</p>
+    </div>
+  </div>
 
 </div>
 
-<!-- ══════════════════════════════════════════════════════
-     PANELS
-════════════════════════════════════════════════════════ -->
-
-<!-- History -->
+<!-- ── History Panel ── -->
 <div class="panel-overlay" id="history-overlay" onclick="closeHistory()"></div>
 <div class="side-panel" id="history-panel">
   <div class="panel-header">
-    <div><div class="panel-title">🕐 Search History</div><div class="panel-subtitle">Last 48 hours</div></div>
+    <div>
+      <div class="panel-title">🕐 Search History</div>
+      <div class="panel-subtitle">Last 48 hours</div>
+    </div>
     <button class="panel-close" onclick="closeHistory()">✕</button>
   </div>
-  <div class="panel-body" id="history-body"><div class="history-empty">No searches yet.</div></div>
+  <div class="panel-body" id="history-body">
+    <div class="history-empty">No searches yet.</div>
+  </div>
 </div>
 
-<!-- Settings -->
+<!-- ── Global Notepad Panel ── -->
+<div class="panel-overlay" id="notepad-overlay" onclick="closeNotepad()"></div>
+<div id="notepad-panel">
+  <div class="notepad-header">
+    <div>
+      <div class="notepad-title">📋 Global Notepad</div>
+      <div class="notepad-subtitle">Quick notes — saved in browser storage</div>
+    </div>
+    <button class="panel-close" onclick="closeNotepad()">✕</button>
+  </div>
+  <div class="notepad-body">
+    <textarea id="global-notepad-textarea"
+      placeholder="Jot down names, IDs, observations — anything you need across searches. Saved locally in your browser."
+      oninput="onNotepadInput()"></textarea>
+    <div class="notepad-meta">
+      <span class="notepad-char-count" id="notepad-char-count">0 characters</span>
+      <span class="notepad-saved-msg" id="notepad-saved-msg">✅ Saved!</span>
+    </div>
+    <div class="notepad-actions">
+      <button class="notepad-save-btn" onclick="saveGlobalNotepad()">💾 Save Note</button>
+      <button class="notepad-clear-btn" onclick="clearGlobalNotepad()">🗑 Clear</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Settings Panel ── -->
 <div class="panel-overlay" id="settings-overlay" onclick="closeSettings()"></div>
 <div class="side-panel" id="settings-panel">
   <div class="panel-header">
-    <div><div class="panel-title">⚙️ Settings</div><div class="panel-subtitle">Credentials &amp; cache</div></div>
+    <div>
+      <div class="panel-title">⚙️ Settings</div>
+      <div class="panel-subtitle">Credentials &amp; cache</div>
+    </div>
     <button class="panel-close" onclick="closeSettings()">✕</button>
   </div>
   <div class="panel-body">
     <div class="section-lbl">Credentials</div>
-    <div class="form-group"><label>Unite Us Email</label><input type="email" id="cred-email" placeholder="your@email.com" /></div>
-    <div class="form-group"><label>Password</label><input type="password" id="cred-password" placeholder="••••••••" /></div>
+    <div class="form-group">
+      <label>Unite Us Email</label>
+      <input type="email" id="cred-email" placeholder="your@email.com" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="cred-password" placeholder="••••••••" />
+    </div>
     <button class="btn-save-full" onclick="saveCredentials()">Save &amp; Reconnect</button>
     <div class="save-msg" id="save-msg">✅ Saved! Reconnecting...</div>
     <hr class="divider">
     <div class="section-lbl">Cache</div>
-    <p style="font-size:0.82rem;color:var(--text-2);margin-bottom:14px;line-height:1.6">Cached results load instantly without re-scanning.</p>
+    <p style="font-size:0.82rem;color:var(--text-2);margin-bottom:14px;line-height:1.6">Cached results load instantly without re-scanning Unite Us.</p>
     <button class="danger-btn" onclick="clearCache()">🗑 Clear All Cached Results</button>
   </div>
 </div>
 
-<!-- Global Notepad -->
-<div class="panel-overlay" id="notepad-overlay" onclick="closeNotepad()"></div>
-<div class="side-panel" id="notepad-panel">
-  <div class="panel-header">
-    <div><div class="panel-title">📓 Global Notepad</div><div class="panel-subtitle">Persistent scratch pad</div></div>
-    <button class="panel-close" onclick="closeNotepad()">✕</button>
-  </div>
-  <div class="panel-body">
-    <textarea id="global-notepad-ta" class="global-notepad-textarea"
-      placeholder="Notes, reminders, anything. Auto-saved."
-      oninput="scheduleNotepadSave()"></textarea>
-    <div class="notepad-saved-msg" id="notepad-saved-msg"></div>
-  </div>
-</div>
+<div class="toast" id="toast"></div>
 
-<!-- Auto Scanner -->
-<div class="panel-overlay" id="autoscanner-overlay" onclick="closeAutoScanner()"></div>
-<div class="side-panel wide-panel" id="autoscanner-panel">
-  <div class="panel-header">
-    <div><div class="panel-title">🤖 Auto Scanner</div><div class="panel-subtitle">Batch scan a list of surnames</div></div>
-    <button class="panel-close" onclick="closeAutoScanner()">✕</button>
-  </div>
-  <div class="panel-body">
-    <div class="autoscan-add-row">
-      <input type="text" id="autoscan-input" class="autoscan-input" placeholder="Enter a surname..." />
-      <button class="btn-autoscan-add top" onclick="autoscanAddTop()">⬆ Add Top</button>
-      <button class="btn-autoscan-add bottom" onclick="autoscanAddBottom()">⬇ Add Bottom</button>
-    </div>
-    <div class="section-lbl" style="margin-top:16px">Surname Queue</div>
-    <div class="autoscan-list" id="autoscan-list"><div class="autoscan-empty">No surnames queued.</div></div>
-    <div class="autoscan-controls">
-      <button class="btn-primary" id="autoscan-run-btn" onclick="autoscanStart()">▶ Run Auto Scan</button>
-      <button class="btn-stop" id="autoscan-stop-btn" onclick="autoscanStop()" style="display:none">⛔ Stop</button>
-      <span class="autoscan-status" id="autoscan-status-txt"></span>
-    </div>
-    <div class="section-lbl" style="margin-top:24px">Autoscan History</div>
-    <div class="autoscan-history" id="autoscan-history"><div class="autoscan-empty">No results yet.</div></div>
-  </div>
-</div>
+<script>
+  let polling = null;
+  let currentFilter = 'need_screening';
+  let currentData = null;
+  let scanStartTime = null;
+  let timerInterval = null;
+  let lastEstimate = null;
+  let lastEstimateTime = null;
 
-<!-- Per-profile Note Popup -->
+  // Track which row was last "copied from" — persists across re-renders
+  let activeCopyRowId = null;
+
+  // ── ETA Timer ──
+  function startETA() {
+    scanStartTime = Date.now();
+    lastEstimate = null; lastEstimateTime = null;
+    document.getElementById('eta-timer').textContent = '· Estimating...';
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(tickETA, 1000);
+  }
+  function tickETA() {
+    if (lastEstimate === null || lastEstimateTime === null) { document.getElementById('eta-timer').textContent = '· Estimating...'; return; }
+    const elapsed = (Date.now() - lastEstimateTime) / 1000;
+    const remaining = Math.max(0, Math.round(lastEstimate - elapsed));
+    document.getElementById('eta-timer').textContent = '· ' + formatETA(remaining);
+  }
+  function updateETAEstimate(scanned, total) {
+    if (!scanStartTime || scanned === 0) return;
+    const elapsed = (Date.now() - scanStartTime) / 1000;
+    const perProfile = elapsed / scanned;
+    lastEstimate = Math.round(perProfile * (total - scanned));
+    lastEstimateTime = Date.now();
+  }
+  function formatETA(secs) {
+    if (secs <= 0) return 'Almost done...';
+    const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = secs % 60;
+    if (h > 0) return `~${h}h ${m}m remaining`;
+    if (m > 0) return `~${m}m ${s}s remaining`;
+    return `~${s}s remaining`;
+  }
+  function stopETA(done) {
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    document.getElementById('eta-timer').textContent = done ? '· Complete' : '';
+    setTimeout(() => document.getElementById('eta-timer').textContent = '', 3000);
+  }
+
+  // ── Toast ──
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // ── Copy with active-row tracking ──
+  // rowId is the unique identifier for the row (uuid or name+dob combo)
+  function copyText(text, label, rowId) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('Copied ' + label + ': ' + text);
+      if (rowId !== undefined && rowId !== null) setActiveCopyRow(rowId);
+    });
+  }
+  function copyPhone(raw, rowId) {
+    let d = raw.replace(/[^0-9]/g, '');
+    if (d.length === 11 && d.startsWith('1')) d = d.slice(1);
+    if (d.length !== 10) { copyText(raw, 'phone', rowId); return; }
+    const fmt = '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6);
+    copyText(fmt, 'phone', rowId);
+  }
+
+  function setActiveCopyRow(rowId) {
+    // Remove highlight from previous
+    if (activeCopyRowId !== null) {
+      document.querySelectorAll(`.person-row[data-row-id]`).forEach(el => {
+        if (el.dataset.rowId === activeCopyRowId) el.classList.remove('copy-active');
+      });
+    }
+    activeCopyRowId = rowId;
+    document.querySelectorAll(`.person-row[data-row-id]`).forEach(el => {
+      if (el.dataset.rowId === rowId) el.classList.add('copy-active');
+    });
+  }
+
+  // ── Filter ──
+  function setFilter(f, btn) {
+    currentFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderResults();
+  }
+
+  // ── History ──
+  function openHistory() {
+    fetch('/history').then(r => r.json()).then(data => {
+      const body = document.getElementById('history-body');
+      if (!data.history || data.history.length === 0) {
+        body.innerHTML = '<div class="history-empty">No searches in the last 48 hours.</div>';
+      } else {
+        let html = '';
+        for (const h of data.history) {
+          html += `<div class="history-item">
+            <div class="history-surname">
+              ${h.surname.toUpperCase()}
+              <button class="history-rescan" onclick="rescan('${h.surname}')">↻ Rescan</button>
+            </div>
+            <div class="history-time">🕐 ${h.time_str}</div>
+            <div class="history-stats">
+              <span class="h-stat">${h.total} profiles</span>
+              <span class="h-stat">${h.families} families</span>
+              <span class="h-stat green">${h.enrolled} need screening</span>
+              ${h.failed > 0 ? `<span class="h-stat red">${h.failed} failed</span>` : ''}
+            </div>
+          </div>`;
+        }
+        body.innerHTML = html;
+      }
+    });
+    document.getElementById('history-panel').classList.add('open');
+    document.getElementById('history-overlay').classList.add('open');
+  }
+  function closeHistory() {
+    document.getElementById('history-panel').classList.remove('open');
+    document.getElementById('history-overlay').classList.remove('open');
+  }
+  function rescan(surname) {
+    closeHistory();
+    document.getElementById('scan-input').value = surname;
+    startScan();
+  }
+
+  // ── Global Notepad ──
+  function openNotepad() {
+    const saved = localStorage.getItem('uu_global_notepad') || '';
+    document.getElementById('global-notepad-textarea').value = saved;
+    onNotepadInput();
+    document.getElementById('notepad-panel').classList.add('open');
+    document.getElementById('notepad-overlay').classList.add('open');
+    setTimeout(() => document.getElementById('global-notepad-textarea').focus(), 80);
+  }
+  function closeNotepad() {
+    document.getElementById('notepad-panel').classList.remove('open');
+    document.getElementById('notepad-overlay').classList.remove('open');
+  }
+  function onNotepadInput() {
+    const len = document.getElementById('global-notepad-textarea').value.length;
+    document.getElementById('notepad-char-count').textContent = len.toLocaleString() + ' character' + (len === 1 ? '' : 's');
+  }
+  function saveGlobalNotepad() {
+    const text = document.getElementById('global-notepad-textarea').value;
+    localStorage.setItem('uu_global_notepad', text);
+    const msg = document.getElementById('notepad-saved-msg');
+    msg.style.display = 'inline';
+    setTimeout(() => { msg.style.display = 'none'; }, 1800);
+    showToast('📋 Notepad saved');
+  }
+  function clearGlobalNotepad() {
+    if (!confirm('Clear the entire notepad? This cannot be undone.')) return;
+    document.getElementById('global-notepad-textarea').value = '';
+    localStorage.removeItem('uu_global_notepad');
+    onNotepadInput();
+    showToast('🗑 Notepad cleared');
+  }
+
+  // ── Settings ──
+  function openSettings() {
+    fetch('/creds').then(r => r.json()).then(d => {
+      document.getElementById('cred-email').value = d.email || '';
+      document.getElementById('cred-password').value = '';
+    });
+    document.getElementById('settings-panel').classList.add('open');
+    document.getElementById('settings-overlay').classList.add('open');
+  }
+  function closeSettings() {
+    document.getElementById('settings-panel').classList.remove('open');
+    document.getElementById('settings-overlay').classList.remove('open');
+  }
+  async function saveCredentials() {
+    const email = document.getElementById('cred-email').value.trim();
+    const password = document.getElementById('cred-password').value.trim();
+    if (!email || !password) { showToast('Enter both fields'); return; }
+    await fetch('/save-creds?email=' + encodeURIComponent(email) + '&password=' + encodeURIComponent(password));
+    document.getElementById('save-msg').style.display = 'block';
+    setTimeout(() => { document.getElementById('save-msg').style.display = 'none'; closeSettings(); }, 2000);
+  }
+  async function clearCache() {
+    await fetch('/clear-cache');
+    showToast('Cache cleared');
+    closeSettings();
+  }
+
+  // ── Enhanced Stop: immediate termination, ready for new search without refresh ──
+  async function stopSearch() {
+    await fetch('/stop');
+    // Halt polling immediately
+    if (polling) { clearInterval(polling); polling = null; }
+    stopETA(false);
+    // Reset all UI state — user can type a new surname right away
+    document.getElementById('stop-btn').style.display = 'none';
+    document.getElementById('scan-btn').disabled = false;
+    document.getElementById('prog-wrap').style.display = 'none';
+    const pill = document.getElementById('status-bar');
+    pill.className = 'status-pill stopped';
+    document.getElementById('status-icon').outerHTML = '<span id="status-icon">⛔</span>';
+    document.getElementById('status-text').textContent = 'Stopped — ready for a new search.';
+    showToast('⛔ Stopped. Enter a surname to start a new search.');
+    // Clear copy-tracking highlight
+    activeCopyRowId = null;
+  }
+
+  // ── Start scan ──
+  async function startScan() {
+    const s = document.getElementById('scan-input').value.trim();
+    if (!s) return;
+    // Reset copy-tracking on new scan
+    activeCopyRowId = null;
+    scanStartTime = null; lastEstimate = null; lastEstimateTime = null;
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    document.getElementById('eta-timer').textContent = '';
+    document.getElementById('scan-btn').disabled = true;
+    document.getElementById('stop-btn').style.display = 'inline-block';
+    document.getElementById('prog-wrap').style.display = 'block';
+    document.getElementById('filter-area').style.display = 'none';
+    document.getElementById('results').innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Collecting profiles from Unite Us...</p></div>';
+    ['s-total','s-families','s-enrolled','s-failed'].forEach(id => document.getElementById(id).textContent = '—');
+    await fetch('/scan?q=' + encodeURIComponent(s));
+    if (polling) clearInterval(polling);
+    polling = setInterval(fetchResults, 2500);
+    fetchResults();
+  }
+
+  // ── Main fetch ──
+  async function fetchResults() {
+    try {
+      const res = await fetch('/data');
+      const data = await res.json();
+      const pill = document.getElementById('status-bar');
+      document.getElementById('status-text').textContent = data.status;
+
+      if (data.searching) {
+        pill.className = 'status-pill searching';
+        document.getElementById('status-icon').outerHTML = '<span id="status-icon" class="spinner"></span>';
+        document.getElementById('stop-btn').style.display = 'inline-block';
+        document.getElementById('scan-btn').disabled = true;
+        if (data.scan && data.scan.total && data.scan.scanned > 0) {
+          if (!timerInterval) startETA();
+          updateETAEstimate(data.scan.scanned, data.scan.total);
+        }
+      } else if (data.status.includes('Stopped')) {
+        pill.className = 'status-pill stopped';
+        document.getElementById('status-icon').outerHTML = '<span id="status-icon">⛔</span>';
+        document.getElementById('scan-btn').disabled = false;
+        document.getElementById('stop-btn').style.display = 'none';
+        document.getElementById('prog-wrap').style.display = 'none';
+        stopETA(false);
+        if (polling) { clearInterval(polling); polling = null; }
+      } else if (data.status.includes('Done') || data.status.includes('Waiting')) {
+        pill.className = data.status.includes('Done') ? 'status-pill done' : 'status-pill idle';
+        document.getElementById('status-icon').outerHTML = data.status.includes('Done') ? '<span id="status-icon">✓</span>' : '<span id="status-icon">●</span>';
+        document.getElementById('scan-btn').disabled = false;
+        document.getElementById('stop-btn').style.display = 'none';
+        if (data.status.includes('Done')) { document.getElementById('prog-wrap').style.display = 'none'; stopETA(true); }
+        if (polling) { clearInterval(polling); polling = null; }
+      } else {
+        pill.className = 'status-pill idle';
+        document.getElementById('status-icon').outerHTML = '<span id="status-icon">●</span>';
+      }
+
+      if (!data.scan || !data.scan.profiles) return;
+      currentData = data.scan;
+
+      const { profiles, total, scanned, phone_groups, failed, from_cache } = data.scan;
+      document.getElementById('s-total').textContent = total || '—';
+      document.getElementById('s-failed').textContent = failed ? failed.length : 0;
+
+      const familyCount        = phone_groups ? Object.values(phone_groups).filter(g => g.length > 1).length : 0;
+      const enrolledZeroScreen = profiles.filter(p => p.checked && p.any_enrolled && p.zero_screening).length;
+      document.getElementById('s-families').textContent = familyCount;
+      document.getElementById('s-enrolled').textContent = enrolledZeroScreen;
+
+      fetch('/history').then(r => r.json()).then(d => {
+        const badge = document.getElementById('history-badge');
+        const count = d.history ? d.history.length : 0;
+        badge.textContent = count;
+        badge.style.display = count > 0 ? 'inline' : 'none';
+      });
+
+      if (total && scanned !== undefined) {
+        const pct = Math.round((scanned / total) * 100);
+        document.getElementById('prog-bar').style.width = pct + '%';
+        document.getElementById('prog-pct').textContent = pct + '%';
+        const cacheNote = from_cache ? ' · from cache' : '';
+        document.getElementById('prog-lbl').textContent = `Scanned ${scanned} of ${total} profiles${cacheNote}`;
+      }
+
+      if (profiles && profiles.length > 0) {
+        document.getElementById('filter-area').style.display = 'block';
+        renderResults();
+      }
+
+      if (failed && failed.length > 0 && !data.searching) renderFailed(failed);
+
+    } catch(e) { console.error(e); }
+  }
+
+  function renderResults() {
+    if (!currentData) return;
+    const { surname, profiles, phone_groups, from_cache } = currentData;
+    const nameQuery   = (document.getElementById('name-search').value   || '').toLowerCase();
+    const numberQuery = (document.getElementById('number-search').value || '').replace(/[^0-9]/g, '');
+
+    let filtered = profiles.filter(p => {
+      if (nameQuery   && !p.name.toLowerCase().includes(nameQuery)) return false;
+      if (numberQuery && !(p.raw_phone || '').replace(/[^0-9]/g, '').includes(numberQuery)) return false;
+      if (currentFilter === 'not_enrolled')   return p.checked && !p.any_enrolled;
+      if (currentFilter === 'enrolled')       return p.checked && p.any_enrolled;
+      if (currentFilter === 'zero_screen')    return p.checked && p.zero_screening;
+      if (currentFilter === 'has_screen')     return p.checked && !p.zero_screening;
+      if (currentFilter === 'need_screening') return p.checked && p.any_enrolled && p.zero_screening;
+      if (currentFilter === 'family') {
+        const grp = phone_groups || {};
+        return p.raw_phone && grp[p.raw_phone] && grp[p.raw_phone].length > 1;
+      }
+      return true;
+    });
+
+    document.getElementById('filter-count').textContent = `${filtered.length} of ${profiles.length} profiles`;
+
+    const phoneMap = {};
+    for (const p of filtered) {
+      const key = p.raw_phone || '__none__' + p.name;
+      if (!phoneMap[key]) phoneMap[key] = [];
+      phoneMap[key].push(p);
+    }
+
+    const pg = phone_groups || {};
+    const families = Object.entries(phoneMap).filter(([k, v]) => !k.startsWith('__none__') && pg[k] && pg[k].length > 1);
+    const solos    = Object.entries(phoneMap).filter(([k, v]) => k.startsWith('__none__') || !pg[k] || pg[k].length === 1);
+
+    let html = `<div class="section-heading">
+      Results for <span style="color:var(--red);margin-left:4px">${(surname||'').toUpperCase()}</span>
+      ${from_cache ? '<span class="cached-badge">⚡ Cached</span>' : ''}
+    </div>`;
+
+    html += `<div class="list-header col-grid">
+      <div>Name</div><div>Phone</div><div>DOB</div><div>Age</div>
+      <div>Medicaid ID</div><div>Enrollment</div><div>Screenings</div><div>Pg</div>
+    </div>`;
+
+    for (const [phone, members] of families) {
+      const safePhone = phone.replace(/'/g, "\\'");
+      html += `<div class="family-group">
+        <div class="family-group-header">
+          <div class="family-dot"></div>
+          Family Group &nbsp;·&nbsp;
+          <span class="family-phone">${phone}</span>
+          <span class="fam-count">${members.length}</span>
+          <button class="fam-copy" onclick="copyPhone('${safePhone}', null)">📋 Copy #</button>
+        </div>`;
+      for (const p of members) html += renderPersonRow(p, false);
+      html += '</div>';
+    }
+
+    for (const [, members] of solos) {
+      html += '<div class="solo-group">' + renderPersonRow(members[0], true) + '</div>';
+    }
+
+    if (filtered.length === 0) {
+      html += '<div class="empty-state"><div class="empty-icon">🔍</div><p>No profiles match the current filter.</p></div>';
+    }
+
+    document.getElementById('results').innerHTML = html;
+
+    // Re-apply copy-active highlight after each re-render
+    if (activeCopyRowId !== null) {
+      document.querySelectorAll('.person-row[data-row-id]').forEach(el => {
+        if (el.dataset.rowId === activeCopyRowId) el.classList.add('copy-active');
+      });
+    }
+  }
+
+  function renderFailed(failed) {
+    let html = `<div class="failed-section">
+      <div class="failed-header">⚠️ ${failed.length} profile${failed.length > 1 ? 's' : ''} failed to load</div>`;
+    for (const f of failed) {
+      html += `<div class="failed-row">
+        <div class="failed-name">${f.name}</div>
+        <div class="failed-err">${f.error || 'Unknown error'}</div>
+      </div>`;
+    }
+    html += '</div>';
+    document.getElementById('results').innerHTML += html;
+  }
+
+  function calcAge(dob) {
+    if (!dob) return '—';
+    const parts = dob.split('/');
+    if (parts.length !== 3) return '—';
+    const birth = new Date(+parts[2], +parts[0] - 1, +parts[1]);
+    if (isNaN(birth)) return '—';
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age >= 0 ? age : '—';
+  }
+
+  function renderPersonRow(p, showPhoneCopy) {
+    const notes = getNotes();
+
+    let enrollBadge = '<span class="enroll-loading">Loading...</span>';
+    if (p.checked) {
+      const enrollUrl = p.uuid ? `https://app.uniteus.io/facesheet/${p.uuid}/profile` : '#';
+      enrollBadge = p.any_enrolled
+        ? `<a href="${enrollUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="enroll-yes" style="cursor:pointer">✓ Enrolled</span></a>`
+        : `<a href="${enrollUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="enroll-no" style="cursor:pointer">Not Enrolled</span></a>`;
+    }
+
+    let screenBadge = '<span class="screen-loading">Loading...</span>';
+    if (p.checked) {
+      const screenUrl = p.uuid ? `https://app.uniteus.io/facesheet/${p.uuid}/screenings` : '#';
+      screenBadge = p.zero_screening
+        ? `<a href="${screenUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="screen-zero" style="cursor:pointer">0 Screenings</span></a>`
+        : `<a href="${screenUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="screen-has" style="cursor:pointer">${p.screening_count || '?'}</span></a>`;
+    }
+
+    // ── Determine row color class (priority: not_enrolled > has_screenings > priority/amber)
+    // copy-active is applied dynamically via JS on top of these
+    let rowColorClass = '';
+    if (p.checked) {
+      if (!p.any_enrolled) {
+        rowColorClass = ' row-not-enrolled';      // Solid RED — Not Enrolled
+      } else if (!p.zero_screening) {
+        rowColorClass = ' row-has-screenings';    // Solid TEAL — Has 1+ screenings
+      } else {
+        rowColorClass = ' priority';              // Amber — Enrolled, 0 screenings (target)
+      }
+    }
+
+    const age   = calcAge(p.dob);
+    const mID   = p.member_id || '—';
+
+    // Unique row ID: use UUID when available (most accurate), fall back to name+dob combo
+    const rowId = p.uuid || (p.name + '|' + (p.dob || '') + '|' + (p.page || ''));
+    // Escape for data-row-id HTML attribute and JS string
+    const rowIdAttr = rowId.replace(/"/g, '&quot;');
+    const rowIdJs   = rowId.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+    const safeName  = p.name.replace(/'/g, "\\'");
+    const safeDob   = (p.dob || '').replace(/'/g, "\\'");
+    const safePhone = (p.raw_phone || '').replace(/'/g, "\\'");
+    const safeID    = mID.replace(/'/g, "\\'");
+
+    return `<div class="person-row col-grid${rowColorClass}" data-row-id="${rowIdAttr}">
+      <div class="person-name">
+        ${p.uuid
+          ? `<a href="https://app.uniteus.io/facesheet/${p.uuid}/" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;border-bottom:1.5px solid var(--primary-mid);" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='inherit'">${p.name}</a>`
+          : p.name
+        }
+        <button class="cp" onclick="copyText('${safeName}','name','${rowIdJs}')">copy</button>
+      </div>
+      <div class="person-phone">
+        ${p.raw_phone || '—'}
+        ${showPhoneCopy && p.raw_phone ? `<button class="cp" onclick="copyPhone('${safePhone}','${rowIdJs}')">copy</button>` : ''}
+      </div>
+      <div class="person-dob">
+        ${p.dob || '—'}
+        ${p.dob ? `<button class="cp" onclick="copyText('${safeDob}','DOB','${rowIdJs}')">copy</button>` : ''}
+      </div>
+      <div class="person-age">${age !== '—' ? age + ' yr' : '—'}</div>
+      <div style="font-size:0.83rem;color:var(--text);display:flex;align-items:center;justify-content:center;gap:4px;">
+        <span>${mID}</span>
+        ${mID !== '—' ? `<button class="cp" onclick="copyText('${safeID}','ID','${rowIdJs}')">copy</button>` : ''}
+      </div>
+      <div>${enrollBadge}</div>
+      <div>${screenBadge}</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:4px;">
+        <span class="pg-badge">${p.page}</span>
+        ${p.uuid ? `<button class="note-btn ${notes[p.uuid] ? 'has-note' : ''}" onclick="openNote('${p.uuid}','${safeName}')">
+          ${notes[p.uuid] ? '📝' : '+'} note
+        </button>` : ''}
+      </div>
+    </div>
+    ${notes[p.uuid] ? `<div class="note-text col-grid" style="display:block">📝 ${notes[p.uuid]}</div>` : ''}`;
+  }
+
+  document.getElementById('scan-input').addEventListener('keydown', e => { if (e.key === 'Enter') startScan(); });
+  setInterval(fetchResults, 4000);
+
+  fetch('/history').then(r => r.json()).then(d => {
+    const count = d.history ? d.history.length : 0;
+    const badge = document.getElementById('history-badge');
+    badge.textContent = count;
+    badge.style.display = count > 0 ? 'inline' : 'none';
+  });
+
+  // ── Scroll-to-top button ──
+  window.addEventListener('scroll', () => {
+    const btn = document.getElementById('scroll-top-btn');
+    if (window.scrollY > 300) btn.classList.add('visible');
+    else btn.classList.remove('visible');
+  });
+
+  // ── Per-member Notes ──
+  let activeNoteUuid = null;
+
+  function countWords(text) { return text.trim() === '' ? 0 : text.trim().split(/\s+/).length; }
+  function getNotes() {
+    try { return JSON.parse(localStorage.getItem('uu_notes') || '{}'); } catch { return {}; }
+  }
+  function saveNotes(notes) { localStorage.setItem('uu_notes', JSON.stringify(notes)); }
+
+  function openNote(uuid, name) {
+    activeNoteUuid = uuid;
+    const notes = getNotes();
+    const existing = notes[uuid] || '';
+    document.getElementById('note-popup-name').textContent = name;
+    document.getElementById('note-textarea').value = existing;
+    document.getElementById('note-delete-btn').style.display = existing ? 'inline-block' : 'none';
+    document.getElementById('note-popup').style.display = 'flex';
+    onNoteInput();
+    setTimeout(() => document.getElementById('note-textarea').focus(), 50);
+  }
+  function closeNote() {
+    document.getElementById('note-popup').style.display = 'none';
+    activeNoteUuid = null;
+  }
+  function onNoteInput() {
+    const text  = document.getElementById('note-textarea').value;
+    const words = countWords(text);
+    const counter = document.getElementById('note-word-count');
+    const saveBtn = document.getElementById('note-save-btn');
+    counter.textContent = `${words} / 50 words`;
+    counter.className   = words > 50 ? 'note-word-count over' : 'note-word-count';
+    saveBtn.disabled    = words > 50;
+  }
+  function saveNote() {
+    const text  = document.getElementById('note-textarea').value.trim();
+    const words = countWords(text);
+    if (words > 50) return;
+    const notes = getNotes();
+    if (text) { notes[activeNoteUuid] = text; } else { delete notes[activeNoteUuid]; }
+    saveNotes(notes);
+    closeNote();
+    renderResults();
+    showToast('📝 Note saved');
+  }
+  function deleteNote() {
+    const notes = getNotes();
+    delete notes[activeNoteUuid];
+    saveNotes(notes);
+    closeNote();
+    renderResults();
+    showToast('🗑 Note deleted');
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeNote(); closeNotepad(); }
+  });
+</script>
+
+<button class="scroll-top-btn" id="scroll-top-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">↑</button>
+
+<!-- Per-member note popup (data logic unchanged) -->
 <div class="note-popup" id="note-popup" style="display:none" onclick="if(event.target===this)closeNote()">
   <div class="note-box">
     <div class="note-box-header">
       <div class="note-box-name" id="note-popup-name"></div>
       <button class="note-box-close" onclick="closeNote()">✕</button>
     </div>
-    <textarea class="note-textarea" id="note-textarea" placeholder="Add a note… (max 100 characters)" oninput="onNoteInput()" maxlength="110"></textarea>
-    <div class="note-char-count" id="note-char-count">0 / 100 characters</div>
+    <textarea class="note-textarea" id="note-textarea" placeholder="Add a note... (max 50 words)" oninput="onNoteInput()"></textarea>
+    <div class="note-word-count" id="note-word-count">0 / 50 words</div>
     <div class="note-actions">
       <button class="note-save" id="note-save-btn" onclick="saveNote()">Save Note</button>
       <button class="note-delete" id="note-delete-btn" onclick="deleteNote()" style="display:none">Delete</button>
     </div>
   </div>
 </div>
-
-<div class="toast" id="toast"></div>
-<button class="scroll-top-btn" id="scroll-top-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">↑</button>
-
-<!-- ══════════════════════════════════════════════════════
-     JAVASCRIPT
-════════════════════════════════════════════════════════ -->
-<script>
-// ══════════════════════════════════════════════════════
-// APP STATE
-// ══════════════════════════════════════════════════════
-let polling         = null;
-let currentFilter   = 'need_screening';
-let currentData     = null;
-let scanStartTime   = null;
-let timerInterval   = null;
-let lastEstimate    = null;
-let lastEstimateTime= null;
-let serverNotes     = {};
-let notepadSaveTimer= null;
-let activeNoteUuid  = null;
-let isSearchMode    = false;   // true once user has searched once
-
-// Track which row UUIDs are currently "copy-highlighted"
-// key: uuid (or row-idx), value: true
-const copiedRows = new Set();
-
-// ══════════════════════════════════════════════════════
-// STICKY HEIGHT
-// ══════════════════════════════════════════════════════
-function updateStickyOffset() {
-  const shell = document.getElementById('sticky-top-shell');
-  if (shell) document.documentElement.style.setProperty('--sticky-h', shell.offsetHeight + 'px');
-}
-window.addEventListener('resize', updateStickyOffset);
-
-// ══════════════════════════════════════════════════════
-// HOME SCREEN
-// ══════════════════════════════════════════════════════
-function goHome() {
-  // Logo click: only go home when not actively scanning
-  if (isSearchMode) return; // logo does nothing mid-scan
-  showHomeScreen();
-}
-
-function showHomeScreen() {
-  document.getElementById('homescreen').style.display = 'flex';
-  document.getElementById('main-container').style.display = 'none';
-  document.getElementById('search-area').style.display = 'none';
-  document.getElementById('filter-area').style.display = 'none';
-  document.getElementById('status-bar-wrap').style.display = 'none';
-  document.getElementById('logo-btn').classList.remove('logo-inactive');
-  isSearchMode = false;
-  currentData  = null;
-  setTimeout(updateStickyOffset, 50);
-}
-
-function showSearchMode() {
-  document.getElementById('homescreen').style.display = 'none';
-  document.getElementById('main-container').style.display = 'block';
-  document.getElementById('search-area').style.display = 'block';
-  document.getElementById('status-bar-wrap').style.display = 'block';
-  document.getElementById('logo-btn').classList.add('logo-inactive');
-  isSearchMode = true;
-  setTimeout(updateStickyOffset, 50);
-}
-
-function startScanFromHome() {
-  const val = document.getElementById('home-scan-input').value.trim();
-  if (!val) return;
-  showSearchMode();
-  document.getElementById('scan-input').value = val;
-  startScan();
-}
-
-// Home input: Enter key
-document.addEventListener('DOMContentLoaded', () => {
-  const hi = document.getElementById('home-scan-input');
-  if (hi) hi.addEventListener('keydown', e => { if (e.key === 'Enter') startScanFromHome(); });
-  const si = document.getElementById('scan-input');
-  if (si) si.addEventListener('keydown', e => { if (e.key === 'Enter') startScan(); });
-  const ai = document.getElementById('autoscan-input');
-  if (ai) ai.addEventListener('keydown', e => { if (e.key === 'Enter') autoscanAddBottom(); });
-  setTimeout(updateStickyOffset, 200);
-});
-
-// ══════════════════════════════════════════════════════
-// ETA TIMER
-// ══════════════════════════════════════════════════════
-function startETA() {
-  scanStartTime = Date.now(); lastEstimate = null; lastEstimateTime = null;
-  document.getElementById('eta-timer').textContent = '· Estimating...';
-  if (timerInterval) clearInterval(timerInterval);
-  timerInterval = setInterval(tickETA, 1000);
-}
-function tickETA() {
-  if (!lastEstimate || !lastEstimateTime) { document.getElementById('eta-timer').textContent = '· Estimating...'; return; }
-  const remaining = Math.max(0, Math.round(lastEstimate - (Date.now() - lastEstimateTime) / 1000));
-  document.getElementById('eta-timer').textContent = '· ' + formatETA(remaining);
-}
-function updateETAEstimate(scanned, total) {
-  if (!scanStartTime || scanned === 0) return;
-  const elapsed = (Date.now() - scanStartTime) / 1000;
-  lastEstimate = Math.round((elapsed / scanned) * (total - scanned));
-  lastEstimateTime = Date.now();
-}
-function formatETA(s) {
-  if (s <= 0) return 'Almost done...';
-  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
-  if (h > 0) return `~${h}h ${m}m remaining`;
-  if (m > 0) return `~${m}m ${sec}s remaining`;
-  return `~${sec}s remaining`;
-}
-function stopETA(done) {
-  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-  document.getElementById('eta-timer').textContent = done ? '· Complete' : '';
-  setTimeout(() => { document.getElementById('eta-timer').textContent = ''; }, 3000);
-}
-
-// ══════════════════════════════════════════════════════
-// TOAST
-// ══════════════════════════════════════════════════════
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2600);
-}
-
-// ══════════════════════════════════════════════════════
-// COPY  — highlight stays until NEXT copy event (no timeout)
-// ══════════════════════════════════════════════════════
-function copyText(text, label, rowEl) {
-  navigator.clipboard.writeText(text).then(() => {
-    showToast('Copied ' + label + ': ' + text);
-    if (rowEl) markRowCopied(rowEl);
-  });
-}
-function copyPhone(raw, rowEl) {
-  let d = raw.replace(/[^0-9]/g, '');
-  if (d.length === 11 && d.startsWith('1')) d = d.slice(1);
-  const fmt = d.length === 10 ? '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6) : raw;
-  copyText(fmt, 'phone', rowEl);
-}
-
-function markRowCopied(rowEl) {
-  // Clear any previously copied row (only one at a time)
-  document.querySelectorAll('.person-row.row-copied').forEach(r => r.classList.remove('row-copied'));
-  rowEl.classList.add('row-copied');
-}
-
-// Delegate copy-button clicks so we can pass the row element
-document.addEventListener('click', function(e) {
-  const btn = e.target.closest('.cp, .fam-copy');
-  if (!btn) return;
-  const row = btn.closest('.person-row');
-  if (row) markRowCopied(row);
-});
-
-// ══════════════════════════════════════════════════════
-// ROW CLICK HIGHLIGHT
-// ══════════════════════════════════════════════════════
-document.addEventListener('click', function(e) {
-  const row = e.target.closest('.person-row');
-  if (!row) return;
-  if (e.target.closest('button, a')) return;
-  const wasClicked = row.classList.contains('row-clicked');
-  document.querySelectorAll('.person-row.row-clicked').forEach(r => r.classList.remove('row-clicked'));
-  if (!wasClicked) row.classList.add('row-clicked');
-});
-
-// ══════════════════════════════════════════════════════
-// FILTER
-// ══════════════════════════════════════════════════════
-function setFilter(f, btn) {
-  currentFilter = f;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderResults();
-}
-
-// ══════════════════════════════════════════════════════
-// HISTORY
-// ══════════════════════════════════════════════════════
-function openHistory() {
-  fetch('/history').then(r => r.json()).then(data => {
-    const body = document.getElementById('history-body');
-    if (!data.history || !data.history.length) {
-      body.innerHTML = '<div class="history-empty">No searches in the last 48 hours.</div>';
-    } else {
-      body.innerHTML = data.history.map(h => `
-        <div class="history-item">
-          <div class="history-surname">${h.surname.toUpperCase()}
-            <button class="history-rescan" onclick="rescan('${h.surname}')">↻ Rescan</button>
-          </div>
-          <div class="history-time">🕐 ${h.time_str}</div>
-          <div class="history-stats">
-            <span class="h-stat">${h.total} profiles</span>
-            <span class="h-stat">${h.families} families</span>
-            <span class="h-stat green">${h.enrolled} need screening</span>
-            ${h.failed > 0 ? `<span class="h-stat red">${h.failed} failed</span>` : ''}
-          </div>
-        </div>`).join('');
-    }
-  });
-  document.getElementById('history-panel').classList.add('open');
-  document.getElementById('history-overlay').classList.add('open');
-}
-function closeHistory() {
-  document.getElementById('history-panel').classList.remove('open');
-  document.getElementById('history-overlay').classList.remove('open');
-}
-function rescan(surname) {
-  closeHistory();
-  showSearchMode();
-  document.getElementById('scan-input').value = surname;
-  startScan();
-}
-
-// ══════════════════════════════════════════════════════
-// SETTINGS
-// ══════════════════════════════════════════════════════
-function openSettings() {
-  fetch('/creds').then(r => r.json()).then(d => {
-    document.getElementById('cred-email').value = d.email || '';
-    document.getElementById('cred-password').value = '';
-  });
-  document.getElementById('settings-panel').classList.add('open');
-  document.getElementById('settings-overlay').classList.add('open');
-}
-function closeSettings() {
-  document.getElementById('settings-panel').classList.remove('open');
-  document.getElementById('settings-overlay').classList.remove('open');
-}
-async function saveCredentials() {
-  const email = document.getElementById('cred-email').value.trim();
-  const pass  = document.getElementById('cred-password').value.trim();
-  if (!email || !pass) { showToast('Enter both fields'); return; }
-  await fetch('/save-creds?email=' + encodeURIComponent(email) + '&password=' + encodeURIComponent(pass));
-  document.getElementById('save-msg').style.display = 'block';
-  setTimeout(() => { document.getElementById('save-msg').style.display = 'none'; closeSettings(); }, 2000);
-}
-async function clearCache() {
-  await fetch('/clear-cache');
-  showToast('Cache cleared');
-  closeSettings();
-}
-
-// ══════════════════════════════════════════════════════
-// GLOBAL NOTEPAD
-// ══════════════════════════════════════════════════════
-function openNotepad() {
-  fetch('/global-notepad').then(r => r.json()).then(d => {
-    document.getElementById('global-notepad-ta').value = d.notepad || '';
-  });
-  document.getElementById('notepad-panel').classList.add('open');
-  document.getElementById('notepad-overlay').classList.add('open');
-}
-function closeNotepad() {
-  document.getElementById('notepad-panel').classList.remove('open');
-  document.getElementById('notepad-overlay').classList.remove('open');
-  if (notepadSaveTimer) { clearTimeout(notepadSaveTimer); notepadSaveTimer = null; doSaveNotepad(); }
-}
-function scheduleNotepadSave() {
-  if (notepadSaveTimer) clearTimeout(notepadSaveTimer);
-  notepadSaveTimer = setTimeout(doSaveNotepad, 1200);
-}
-async function doSaveNotepad() {
-  notepadSaveTimer = null;
-  const text = document.getElementById('global-notepad-ta').value;
-  await fetch('/save-notepad?text=' + encodeURIComponent(text));
-  const msg = document.getElementById('notepad-saved-msg');
-  msg.textContent = '✓ Saved';
-  setTimeout(() => { msg.textContent = ''; }, 1500);
-}
-
-// ══════════════════════════════════════════════════════
-// NOTES (server-side)
-// ══════════════════════════════════════════════════════
-async function loadNotes() {
-  const r = await fetch('/notes');
-  const d = await r.json();
-  serverNotes = d.notes || {};
-}
-function openNote(uuid, name) {
-  activeNoteUuid = uuid;
-  const existing = serverNotes[uuid] || '';
-  document.getElementById('note-popup-name').textContent = name;
-  document.getElementById('note-textarea').value = existing;
-  document.getElementById('note-delete-btn').style.display = existing ? 'inline-block' : 'none';
-  document.getElementById('note-popup').style.display = 'flex';
-  onNoteInput();
-  setTimeout(() => document.getElementById('note-textarea').focus(), 50);
-}
-function closeNote() {
-  document.getElementById('note-popup').style.display = 'none';
-  activeNoteUuid = null;
-}
-function onNoteInput() {
-  const len = document.getElementById('note-textarea').value.length;
-  const counter = document.getElementById('note-char-count');
-  counter.textContent = `${len} / 100 characters`;
-  counter.className   = len > 100 ? 'note-char-count over' : 'note-char-count';
-  document.getElementById('note-save-btn').disabled = len > 100;
-}
-async function saveNote() {
-  const text = document.getElementById('note-textarea').value.trim();
-  if (text.length > 100) return;
-  await fetch('/save-note?uuid=' + encodeURIComponent(activeNoteUuid) + '&text=' + encodeURIComponent(text));
-  if (text) serverNotes[activeNoteUuid] = text; else delete serverNotes[activeNoteUuid];
-  closeNote(); renderResults(); showToast('📝 Note saved');
-}
-async function deleteNote() {
-  await fetch('/delete-note?uuid=' + encodeURIComponent(activeNoteUuid));
-  delete serverNotes[activeNoteUuid];
-  closeNote(); renderResults(); showToast('🗑 Note deleted');
-}
-
-// ══════════════════════════════════════════════════════
-// AUTO SCANNER
-// ══════════════════════════════════════════════════════
-let autoscanPollTimer = null;
-function openAutoScanner() {
-  refreshAutoscanList(); refreshAutoscanHistory();
-  document.getElementById('autoscanner-panel').classList.add('open');
-  document.getElementById('autoscanner-overlay').classList.add('open');
-  if (!autoscanPollTimer) autoscanPollTimer = setInterval(refreshAutoscanHistory, 5000);
-}
-function closeAutoScanner() {
-  document.getElementById('autoscanner-panel').classList.remove('open');
-  document.getElementById('autoscanner-overlay').classList.remove('open');
-  if (autoscanPollTimer) { clearInterval(autoscanPollTimer); autoscanPollTimer = null; }
-}
-async function refreshAutoscanList() {
-  const r = await fetch('/autoscan-list');
-  const d = await r.json();
-  renderAutoscanList(d.list || []);
-}
-function renderAutoscanList(list) {
-  const el = document.getElementById('autoscan-list');
-  const badge = document.getElementById('autoscan-badge');
-  badge.textContent = list.length; badge.style.display = list.length > 0 ? 'inline' : 'none';
-  if (!list.length) { el.innerHTML = '<div class="autoscan-empty">No surnames queued. Add some above.</div>'; return; }
-  el.innerHTML = list.map((s, i) => `
-    <div class="autoscan-item">
-      <span class="autoscan-rank">#${i+1}</span>
-      <span class="autoscan-name">${s}</span>
-      <button class="autoscan-remove" onclick="autoscanRemove('${s.replace(/'/g,"\\'")}')">✕</button>
-    </div>`).join('');
-}
-async function autoscanAddTop() {
-  const inp = document.getElementById('autoscan-input');
-  const s = inp.value.trim(); if (!s) return;
-  const d = await (await fetch('/autoscan-add-top?surname=' + encodeURIComponent(s))).json();
-  inp.value = ''; renderAutoscanList(d.list || []);
-}
-async function autoscanAddBottom() {
-  const inp = document.getElementById('autoscan-input');
-  const s = inp.value.trim(); if (!s) return;
-  const d = await (await fetch('/autoscan-add-bottom?surname=' + encodeURIComponent(s))).json();
-  inp.value = ''; renderAutoscanList(d.list || []);
-}
-async function autoscanRemove(s) {
-  const d = await (await fetch('/autoscan-remove?surname=' + encodeURIComponent(s))).json();
-  renderAutoscanList(d.list || []);
-}
-async function autoscanStart() {
-  await fetch('/autoscan-start');
-  document.getElementById('autoscan-run-btn').style.display = 'none';
-  document.getElementById('autoscan-stop-btn').style.display = 'inline-block';
-  document.getElementById('autoscan-status-txt').textContent = 'Running...';
-  showToast('🤖 Auto scan started');
-  if (!autoscanPollTimer) autoscanPollTimer = setInterval(refreshAutoscanHistory, 3000);
-}
-async function autoscanStop() {
-  await fetch('/autoscan-stop');
-  document.getElementById('autoscan-run-btn').style.display = 'inline-block';
-  document.getElementById('autoscan-stop-btn').style.display = 'none';
-  document.getElementById('autoscan-status-txt').textContent = 'Stopped.';
-  showToast('🤖 Auto scan stopped');
-}
-async function refreshAutoscanHistory() {
-  const d = await (await fetch('/autoscan-results')).json();
-  if (!d.running) {
-    document.getElementById('autoscan-run-btn').style.display = 'inline-block';
-    document.getElementById('autoscan-stop-btn').style.display = 'none';
-    if (document.getElementById('autoscan-status-txt').textContent === 'Running...')
-      document.getElementById('autoscan-status-txt').textContent = '';
-  }
-  const el = document.getElementById('autoscan-history');
-  if (!d.results || !d.results.length) { el.innerHTML = '<div class="autoscan-empty">No results yet.</div>'; return; }
-  el.innerHTML = d.results.map(h => `
-    <div class="autoscan-hist-item">
-      <div class="autoscan-hist-surname">${h.surname.toUpperCase()}
-        <button class="history-rescan" onclick="closeAutoScanner();rescan('${h.surname}')">↻ View</button>
-      </div>
-      <div class="history-time">🕐 ${h.time_str}</div>
-      <div class="history-stats">
-        <span class="h-stat">${h.total} profiles</span>
-        <span class="h-stat">${h.families} families</span>
-        <span class="h-stat green">${h.enrolled} need screening</span>
-        ${h.failed > 0 ? `<span class="h-stat red">${h.failed} failed</span>` : ''}
-      </div>
-    </div>`).join('');
-}
-
-// ══════════════════════════════════════════════════════
-// STOP / START
-// ══════════════════════════════════════════════════════
-async function stopSearch() {
-  await fetch('/stop');
-  document.getElementById('stop-btn').style.display = 'none';
-  document.getElementById('scan-btn').disabled = false;
-  document.getElementById('prog-wrap').style.display = 'none';
-  stopETA(false);
-  showToast('⛔ Search stopped');
-}
-
-async function startScan() {
-  const s = document.getElementById('scan-input').value.trim();
-  if (!s) return;
-  showSearchMode();
-  scanStartTime = null; lastEstimate = null; lastEstimateTime = null;
-  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-  document.getElementById('eta-timer').textContent = '';
-  document.getElementById('scan-btn').disabled = true;
-  document.getElementById('stop-btn').style.display = 'inline-block';
-  document.getElementById('prog-wrap').style.display = 'block';
-  document.getElementById('filter-area').style.display = 'none';
-  document.getElementById('results').innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Collecting profiles from Unite Us…</p></div>';
-  ['s-total','s-families','s-enrolled','s-failed'].forEach(id => document.getElementById(id).textContent = '—');
-  await fetch('/scan?q=' + encodeURIComponent(s));
-  if (polling) clearInterval(polling);
-  polling = setInterval(fetchResults, 2500);
-  fetchResults();
-}
-
-// ══════════════════════════════════════════════════════
-// MAIN FETCH LOOP
-// ══════════════════════════════════════════════════════
-async function fetchResults() {
-  try {
-    const data = await (await fetch('/data')).json();
-    const pill = document.getElementById('status-bar');
-    document.getElementById('status-text').textContent = data.status;
-
-    if (data.searching) {
-      pill.className = 'status-pill searching';
-      document.getElementById('status-icon').outerHTML = '<span id="status-icon" class="spinner"></span>';
-      document.getElementById('stop-btn').style.display = 'inline-block';
-      document.getElementById('scan-btn').disabled = true;
-      if (data.scan?.total && data.scan.scanned > 0) {
-        if (!timerInterval) startETA();
-        updateETAEstimate(data.scan.scanned, data.scan.total);
-      }
-    } else if (data.status.includes('Stopped')) {
-      pill.className = 'status-pill stopped';
-      document.getElementById('status-icon').outerHTML = '<span id="status-icon">⛔</span>';
-      document.getElementById('scan-btn').disabled = false;
-      document.getElementById('stop-btn').style.display = 'none';
-      document.getElementById('prog-wrap').style.display = 'none';
-      stopETA(false);
-      if (polling) { clearInterval(polling); polling = null; }
-    } else if (data.status.includes('Done') || data.status.includes('Waiting')) {
-      pill.className = data.status.includes('Done') ? 'status-pill done' : 'status-pill idle';
-      document.getElementById('status-icon').outerHTML = data.status.includes('Done') ? '<span id="status-icon">✓</span>' : '<span id="status-icon">●</span>';
-      document.getElementById('scan-btn').disabled = false;
-      document.getElementById('stop-btn').style.display = 'none';
-      if (data.status.includes('Done')) { document.getElementById('prog-wrap').style.display = 'none'; stopETA(true); }
-      if (polling) { clearInterval(polling); polling = null; }
-    } else {
-      pill.className = 'status-pill idle';
-      document.getElementById('status-icon').outerHTML = '<span id="status-icon">●</span>';
-    }
-
-    if (!data.scan?.profiles) return;
-    currentData = data.scan;
-
-    const { profiles, total, scanned, phone_groups, failed, from_cache } = data.scan;
-    document.getElementById('s-total').textContent   = total  || '—';
-    document.getElementById('s-failed').textContent  = failed ? failed.length : 0;
-
-    const familyCount        = phone_groups ? Object.values(phone_groups).filter(g => g.length > 1).length : 0;
-    const enrolledZeroScreen = profiles.filter(p => p.checked && p.any_enrolled && p.zero_screening).length;
-    document.getElementById('s-families').textContent = familyCount;
-    document.getElementById('s-enrolled').textContent = enrolledZeroScreen;
-
-    // Badge
-    fetch('/history').then(r => r.json()).then(d => {
-      const badge = document.getElementById('history-badge');
-      const count = d.history?.length || 0;
-      badge.textContent = count; badge.style.display = count > 0 ? 'inline' : 'none';
-    });
-
-    if (total && scanned !== undefined) {
-      const pct = Math.round((scanned / total) * 100);
-      document.getElementById('prog-bar').style.width = pct + '%';
-      document.getElementById('prog-pct').textContent = pct + '%';
-      document.getElementById('prog-lbl').textContent = `Scanned ${scanned} of ${total}${from_cache ? ' · from cache' : ''}`;
-    }
-
-    if (profiles.length > 0) {
-      document.getElementById('filter-area').style.display = 'block';
-      setTimeout(updateStickyOffset, 50);
-      renderResults();
-    }
-
-    if (failed?.length && !data.searching) renderFailed(failed);
-  } catch(e) { console.error(e); }
-}
-
-// ══════════════════════════════════════════════════════
-// RENDER RESULTS
-// ══════════════════════════════════════════════════════
-function renderResults() {
-  if (!currentData) return;
-  const { surname, profiles, phone_groups, from_cache } = currentData;
-  const nameQ   = (document.getElementById('name-search').value || '').toLowerCase();
-  const numQ    = (document.getElementById('number-search').value || '').replace(/[^0-9]/g, '');
-
-  const filtered = profiles.filter(p => {
-    if (nameQ && !p.name.toLowerCase().includes(nameQ)) return false;
-    if (numQ  && !(p.raw_phone || '').replace(/[^0-9]/g, '').includes(numQ)) return false;
-    if (currentFilter === 'not_enrolled')   return p.checked && !p.any_enrolled;
-    if (currentFilter === 'enrolled')       return p.checked && p.any_enrolled;
-    if (currentFilter === 'zero_screen')    return p.checked && p.zero_screening;
-    if (currentFilter === 'has_screen')     return p.checked && !p.zero_screening;
-    if (currentFilter === 'need_screening') return p.checked && p.any_enrolled && p.zero_screening;
-    if (currentFilter === 'family') {
-      const grp = phone_groups || {};
-      return p.raw_phone && grp[p.raw_phone]?.length > 1;
-    }
-    return true;
-  });
-
-  document.getElementById('filter-count').textContent = `${filtered.length} of ${profiles.length} profiles`;
-
-  const phoneMap = {};
-  for (const p of filtered) {
-    const key = p.raw_phone || '__none__' + p.name;
-    if (!phoneMap[key]) phoneMap[key] = [];
-    phoneMap[key].push(p);
-  }
-
-  const pg = phone_groups || {};
-  const families = Object.entries(phoneMap).filter(([k]) => !k.startsWith('__none__') && pg[k]?.length > 1);
-  const solos    = Object.entries(phoneMap).filter(([k]) => k.startsWith('__none__') || !pg[k] || pg[k].length === 1);
-
-  let html = `<div class="section-heading">
-    Results for <span style="color:var(--accent-red);margin-left:4px">${(surname||'').toUpperCase()}</span>
-    ${from_cache ? '<span class="cached-badge">⚡ Cached</span>' : ''}
-  </div>
-  <div class="list-header col-grid">
-    <div>Name</div><div>Phone</div><div>DOB</div><div>Age</div>
-    <div>Medicaid ID</div><div>Enrollment</div><div>Screenings</div><div>Actions</div>
-  </div>`;
-
-  for (const [phone, members] of families) {
-    const sp = phone.replace(/'/g, "\\'");
-    html += `<div class="family-group">
-      <div class="family-group-header">
-        <div class="family-dot"></div>
-        Family Group &nbsp;·&nbsp;
-        <span class="family-phone">${phone}</span>
-        <span class="fam-count">${members.length}</span>
-        <button class="fam-copy" onclick="copyPhone('${sp}', this.closest('.family-group-header'))">📋 Copy #</button>
-      </div>`;
-    for (const p of members) html += renderPersonRow(p, false);
-    html += '</div>';
-  }
-  for (const [, members] of solos) {
-    html += '<div class="solo-group">' + renderPersonRow(members[0], true) + '</div>';
-  }
-  if (!filtered.length) html += '<div class="empty-state"><div class="empty-icon">🔍</div><p>No profiles match the current filter.</p></div>';
-
-  document.getElementById('results').innerHTML = html;
-}
-
-function renderFailed(failed) {
-  let html = `<div class="failed-section">
-    <div class="failed-header">⚠️ ${failed.length} profile${failed.length > 1 ? 's' : ''} failed to load</div>`;
-  for (const f of failed) {
-    html += `<div class="failed-row"><div class="failed-name">${f.name}</div><div class="failed-err">${f.error || 'Unknown error'}</div></div>`;
-  }
-  html += '</div>';
-  document.getElementById('results').innerHTML += html;
-}
-
-function calcAge(dob) {
-  if (!dob) return '—';
-  const parts = dob.split('/');
-  if (parts.length !== 3) return '—';
-  const birth = new Date(+parts[2], +parts[0]-1, +parts[1]);
-  if (isNaN(birth)) return '—';
-  const today = new Date();
-  let age = today.getFullYear() - birth.getFullYear();
-  if (today.getMonth() - birth.getMonth() < 0 || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate())) age--;
-  return age >= 0 ? age : '—';
-}
-
-function renderPersonRow(p, showPhoneCopy) {
-  let enrollBadge = '<span class="enroll-loading">Loading…</span>';
-  if (p.checked) {
-    const enrollUrl = p.uuid ? `https://app.uniteus.io/facesheet/${p.uuid}/profile` : '#';
-    enrollBadge = p.any_enrolled
-      ? `<a href="${enrollUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="enroll-yes">✓ Enrolled</span></a>`
-      : `<a href="${enrollUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="enroll-no">Not Enrolled</span></a>`;
-  }
-  let screenBadge = '<span class="screen-loading">Loading…</span>';
-  if (p.checked) {
-    const screenUrl = p.uuid ? `https://app.uniteus.io/facesheet/${p.uuid}/screenings` : '#';
-    screenBadge = p.zero_screening
-      ? `<a href="${screenUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="screen-zero">0 Screenings</span></a>`
-      : `<a href="${screenUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="screen-has">${p.screening_count || '?'}</span></a>`;
-  }
-
-  // Row colour class:
-  // — not enrolled at all  → row-warn-red   (yellow→red gradient, high visibility)
-  // — enrolled + 1+ screens→ row-ok-teal    (teal, "good but not priority")
-  // — enrolled + 0 screens → row-priority   (amber, "needs action")
-  // — default (unchecked)  → plain
-  let rowClass = '';
-  if (p.checked) {
-    if (!p.any_enrolled) {
-      rowClass = ' row-warn-red';
-    } else if (!p.zero_screening) {
-      rowClass = ' row-ok-teal';
-    } else {
-      rowClass = ' row-priority';
-    }
-  }
-
-  const age      = calcAge(p.dob);
-  const mID      = p.member_id || '—';
-  const safeName = p.name.replace(/'/g, "\\'");
-  const safeDob  = (p.dob || '').replace(/'/g, "\\'");
-  const safePhone= (p.raw_phone || '').replace(/'/g, "\\'");
-  const safeID   = mID.replace(/'/g, "\\'");
-  const noteText = p.uuid ? (serverNotes[p.uuid] || '') : '';
-  const hasNote  = noteText.length > 0;
-
-  const quickLinkBtn = p.uuid
-    ? `<a href="https://app.uniteus.io/link/uuids/${p.uuid}" target="_blank" rel="noopener" class="quick-link-btn" title="Quick Link">🔗</a>`
-    : '';
-  const noteBtn = p.uuid
-    ? `<button class="note-btn ${hasNote ? 'has-note' : ''}" onclick="openNote('${p.uuid}','${safeName}')">${hasNote ? '📝' : '+'} note</button>`
-    : '';
-
-  // Pass 'this.closest(.person-row)' via the onclick for accurate row reference
-  return `<div class="person-row col-grid${rowClass}">
-    <div class="person-name">
-      ${p.uuid
-        ? `<a href="https://app.uniteus.io/facesheet/${p.uuid}/" target="_blank" rel="noopener" class="name-link">${p.name}</a>`
-        : p.name}
-      <button class="cp" onclick="copyText('${safeName}','name',this.closest('.person-row'))">copy</button>
-    </div>
-    <div class="person-phone">
-      ${p.raw_phone || '—'}
-      ${showPhoneCopy && p.raw_phone ? `<button class="cp" onclick="copyPhone('${safePhone}',this.closest('.person-row'))">copy</button>` : ''}
-    </div>
-    <div class="person-dob">
-      ${p.dob || '—'}
-      ${p.dob ? `<button class="cp" onclick="copyText('${safeDob}','DOB',this.closest('.person-row'))">copy</button>` : ''}
-    </div>
-    <div class="person-age">${age !== '—' ? age + ' yr' : '—'}</div>
-    <div class="person-mid">
-      <span>${mID}</span>
-      ${mID !== '—' ? `<button class="cp" onclick="copyText('${safeID}','ID',this.closest('.person-row'))">copy</button>` : ''}
-    </div>
-    <div>${enrollBadge}</div>
-    <div>${screenBadge}</div>
-    <div class="row-actions">
-      <span class="pg-badge">${p.page}</span>
-      ${quickLinkBtn}${noteBtn}
-    </div>
-  </div>
-  ${hasNote ? `<div class="note-text col-grid">📝 ${noteText}</div>` : ''}`;
-}
-
-// ══════════════════════════════════════════════════════
-// INIT
-// ══════════════════════════════════════════════════════
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeNote(); });
-window.addEventListener('scroll', () => {
-  document.getElementById('scroll-top-btn').classList.toggle('visible', window.scrollY > 300);
-});
-
-loadNotes();
-setInterval(fetchResults, 4000);
-
-fetch('/history').then(r => r.json()).then(d => {
-  const count = d.history?.length || 0;
-  const badge = document.getElementById('history-badge');
-  badge.textContent = count; badge.style.display = count > 0 ? 'inline' : 'none';
-});
-fetch('/autoscan-list').then(r => r.json()).then(d => {
-  const list = d.list || [];
-  const badge = document.getElementById('autoscan-badge');
-  badge.textContent = list.length; badge.style.display = list.length > 0 ? 'inline' : 'none';
-});
-</script>
 </body>
 </html>

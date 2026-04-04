@@ -15,13 +15,21 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 # ── Phase 1: fast table scrape ────────────────────────────
 
 def collect_page_raw(page, surname: str, page_num: int) -> list | None:
+    """
+    Scrape a single search results page without clicking anything.
+    Returns a list of raw dicts, or None if the page has no rows (end of results).
+
+    Each item includes page_idx (row position within the page) so
+    get_uuid_for_single can fall back to positional clicking when two
+    profiles on the same page share the same name.
+    """
     url = SEARCH_URL.format(page=page_num, surname=surname)
     page.goto(url, wait_until="domcontentloaded")
 
     try:
         page.wait_for_selector("table tbody tr", timeout=8000)
     except PlaywrightTimeoutError:
-        return None
+        return None  # no more pages
 
     rows = page.query_selector_all("table tbody tr")
     if not rows:
@@ -41,7 +49,7 @@ def collect_page_raw(page, surname: str, page_num: int) -> list | None:
                 "phone":     phone,
                 "dob":       dob,
                 "page_num":  page_num,
-                "page_idx":  idx,
+                "page_idx":  idx,       # row index within this page for fallback clicking
             })
 
     print(f"  Page {page_num}: {len(items)} rows")
@@ -53,17 +61,13 @@ def collect_page_raw(page, surname: str, page_num: int) -> list | None:
 def get_uuid_for_single(page, surname: str, item: dict) -> str | None:
     url = SEARCH_URL.format(page=item["page_num"], surname=surname)
 
-    # Retry up to 3 times loading the search page
+    # Retry up to 3 times — browser can be sluggish after heavy scrolling
     for attempt in range(3):
-        if state.stop_flag:
-            return None
-
         page.goto(url, wait_until="domcontentloaded")
-        page.wait_for_timeout(600)
+        page.wait_for_timeout(500)
 
-        if is_auth_url(page.url):
+        if is_auth_url(page.url):                      # ← new: bail immediately, don't retry
             raise AuthExpiredError("Redirected to auth page during UUID fetch")
-
         try:
             page.wait_for_selector("table tbody tr", timeout=15000)
             break
@@ -78,14 +82,12 @@ def get_uuid_for_single(page, surname: str, item: dict) -> str | None:
     rows   = page.query_selector_all("table tbody tr")
     target = None
 
-    # First try: match by exact name
     for row in rows:
         cells = row.query_selector_all("td")
         if cells and cells[0].inner_text().strip() == item["name"]:
             target = row
             break
 
-    # Fallback: positional index
     if not target and item["page_idx"] < len(rows):
         target = rows[item["page_idx"]]
 
@@ -94,58 +96,20 @@ def get_uuid_for_single(page, surname: str, item: dict) -> str | None:
         return None
 
     uuid = None
-    for click_attempt in range(3):
-        if state.stop_flag:
-            return None
-        try:
-            with page.expect_navigation(timeout=14000):
-                target.click()
-            page.wait_for_load_state("domcontentloaded", timeout=12000)
-            page.wait_for_timeout(800)
-
+    try:
+        with page.expect_navigation(timeout=12000):
+            target.click()
+        page.wait_for_load_state("domcontentloaded", timeout=10000)
+        page.wait_for_timeout(500)
+        uuid = extract_uuid_from_url(page.url)
+        if not uuid:
+            page.wait_for_timeout(2000)
             uuid = extract_uuid_from_url(page.url)
-            if not uuid:
-                # Sometimes navigation finishes before URL updates — wait longer
-                page.wait_for_timeout(2500)
-                uuid = extract_uuid_from_url(page.url)
+        print(f"  {item['name']} → {uuid or '❌ no UUID'}")
+    except Exception as e:
+        print(f"  {item['name']} → ❌ {e}")
 
-            if not uuid:
-                # Last resort: try waiting for /facesheet/ in URL
-                try:
-                    page.wait_for_url("**/facesheet/**", timeout=6000)
-                    uuid = extract_uuid_from_url(page.url)
-                except PlaywrightTimeoutError:
-                    pass
-
-            if uuid:
-                print(f"  {item['name']} → {uuid}")
-                return uuid
-
-            print(f"  {item['name']} → no UUID in URL yet (attempt {click_attempt + 1}/3), retrying...")
-            # Navigate back and try clicking again
-            page.go_back(wait_until="domcontentloaded", timeout=10000)
-            page.wait_for_timeout(800)
-            rows   = page.query_selector_all("table tbody tr")
-            target = None
-            for row in rows:
-                cells = row.query_selector_all("td")
-                if cells and cells[0].inner_text().strip() == item["name"]:
-                    target = row
-                    break
-            if not target and item["page_idx"] < len(rows):
-                target = rows[item["page_idx"]]
-            if not target:
-                break
-
-        except Exception as e:
-            print(f"  {item['name']} → ❌ click attempt {click_attempt + 1}: {e}")
-            if click_attempt < 2:
-                time.sleep(2)
-            else:
-                break
-
-    print(f"  {item['name']} → ❌ no UUID after all attempts")
-    return None
+    return uuid
 
 
 # ── Profile stub factory ──────────────────────────────────

@@ -31,9 +31,7 @@ def check_profile(page, uuid: str | None) -> dict:
         try:
             result = _fetch_profile_data(page, base, uuid, result.copy())
             result["error"] = None
-            return result  
-        except AuthExpiredError:   # ← add this
-            raise  
+            return result
         except Exception as e:
             err = str(e)[:120]
             print(f"    ❌ Attempt {attempt + 1}/{PROFILE_RETRY_COUNT + 1} failed for {uuid}: {err}")

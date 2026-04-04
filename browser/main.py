@@ -1,12 +1,5 @@
 """
 main.py — Entry point. Wires all modules together and runs the main loop.
-
-Start the app:
-    python main.py
-
-Make sure you have a .env file with:
-    UNITEUS_EMAIL=your@email.com
-    UNITEUS_PASSWORD=yourpassword
 """
 
 import threading
@@ -25,6 +18,9 @@ def main():
     # ── Load persisted data ───────────────────────────────
     persistence.load_cache()
     persistence.load_history()
+    persistence.load_notes()
+    persistence.load_notepad()
+    persistence.load_autoscan()
 
     # ── Start HTTP server ─────────────────────────────────
     http_server.start_server()
@@ -44,6 +40,21 @@ def main():
 
                 if task == "scan":
                     page = run_scan(page, surname)
+
+                elif task == "autoscan":
+                    # Run scan and record results in autoscan_results
+                    page = run_scan(page, surname)
+                    # Capture result from the most recent history entry
+                    if state.search_history:
+                        h = state.search_history[0]
+                        persistence.add_autoscan_result(
+                            h["surname"], h["total"], h["families"],
+                            h["enrolled"], h["failed"]
+                        )
+                    # If queue is now empty of autoscan tasks, mark done
+                    remaining = [t for t, _ in state.search_queue if t == "autoscan"]
+                    if not remaining:
+                        state.autoscan_running = False
 
                 elif task == "relogin":
                     persistence.delete_session()

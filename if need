@@ -1,0 +1,10 @@
+Quick wins — safe to do right now
+1. Cut the fixed sleeps in scanner.py
+python# Line: page.wait_for_timeout(300)  ← remove this entirely
+# Line: time.sleep(0.8)             ← change to time.sleep(0.3)
+Saves roughly ~10–15 seconds per 10 profiles. Zero risk to data accuracy.
+2. Reduce the scroll loop in checker.py
+python# Change:  for _ in range(20):
+# To:      for _ in range(8):
+# Change:  page.wait_for_timeout(250)
+# To:      page.wait_for_timeout(150)

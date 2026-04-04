@@ -79,12 +79,9 @@ def _run_live_scan(page, surname: str, cache_key: str):
     for p in skipped:
         print(f"  ⏭️  Skipped: {p['name']} — (000) 000-0000")
 
-    # Phone groups are known from raw data — family ordering is ready
     phone_groups   = _build_phone_groups(all_raw)
     ordered_raw    = _reorder_family_first(all_raw, phone_groups)
 
-    # Initialise scan_results with empty profiles list and correct total
-    # Profiles will appear one by one as they are processed
     state.scan_results = {
         "surname":      surname,
         "profiles":     [],
@@ -96,7 +93,7 @@ def _run_live_scan(page, surname: str, cache_key: str):
     }
 
     # ── Phase 2: combined UUID + check loop ──────────────
-    all_profiles = []   # grows one entry at a time
+    all_profiles = []
 
     for item in ordered_raw:
         if state.stop_flag:
@@ -112,13 +109,14 @@ def _run_live_scan(page, surname: str, cache_key: str):
         page.context.close()
         new_ctx  = browser.new_context()
         page     = new_ctx.new_page()
-        # Restore session cookies — no full login needed
         cookies = persistence.load_session_cookies()
         if cookies:
             new_ctx.add_cookies(cookies)
-        page.wait_for_timeout(300) # ← add this line
+        # OPTIMISED: was 300ms → 100ms
+        # Cookie injection is synchronous; 100ms is enough before navigation.
+        page.wait_for_timeout(100)
 
-        for login_attempt in range(2):              # allow one re-login per profile
+        for login_attempt in range(2):
             try:
                 state.status_message = f"Getting profile {position}/{total}: {item['name']}..."
                 uuid = get_uuid_for_single(page, surname, item)
@@ -128,7 +126,7 @@ def _run_live_scan(page, surname: str, cache_key: str):
                     all_profiles.append(stub)
                     stub_added = True
                 else:
-                    stub["uuid"] = uuid             # update after re-login
+                    stub["uuid"] = uuid
 
                 _push(all_profiles, phone_groups)
 
@@ -149,8 +147,10 @@ def _run_live_scan(page, surname: str, cache_key: str):
                     state.scan_results["failed"] = state.failed_profiles
                     time.sleep(1)
 
-                time.sleep(0.8)
-                break                               # success — exit re-login loop
+                # OPTIMISED: was 0.8s → 0.3s
+                # Brief cooldown between profiles to avoid hammering the server.
+                time.sleep(0.3)
+                break
 
             except AuthExpiredError:
                 if login_attempt == 0:
@@ -158,7 +158,6 @@ def _run_live_scan(page, surname: str, cache_key: str):
                     state.status_message = "Session expired — re-logging in..."
                     do_login(page, state.credentials["email"], state.credentials["password"])
                     print(f"  ✅ Re-logged in — retrying {item['name']}")
-                    # loop continues for attempt 1
                 else:
                     err = "Session expired and re-login failed"
                     print(f"  ❌ {err} for {item['name']}")
@@ -256,7 +255,7 @@ def _reorder_family_first(all_raw: list, phone_groups: dict) -> list:
       - Then all solo profiles at the end
     """
     family_phones  = set(phone_groups.keys())
-    family_buckets = {}   # phone → [item, ...]
+    family_buckets = {}
 
     for item in all_raw:
         if item["phone"] in family_phones:

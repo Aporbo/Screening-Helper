@@ -49,7 +49,7 @@ def collect_page_raw(page, surname: str, page_num: int) -> list | None:
                 "phone":     phone,
                 "dob":       dob,
                 "page_num":  page_num,
-                "page_idx":  idx,       # row index within this page for fallback clicking
+                "page_idx":  idx,
             })
 
     print(f"  Page {page_num}: {len(items)} rows")
@@ -61,12 +61,13 @@ def collect_page_raw(page, surname: str, page_num: int) -> list | None:
 def get_uuid_for_single(page, surname: str, item: dict) -> str | None:
     url = SEARCH_URL.format(page=item["page_num"], surname=surname)
 
-    # Retry up to 3 times — browser can be sluggish after heavy scrolling
     for attempt in range(3):
         page.goto(url, wait_until="domcontentloaded")
-        page.wait_for_timeout(500)
+        # OPTIMISED: was 500ms → 200ms
+        # domcontentloaded already fired; 200ms covers any brief JS table render.
+        page.wait_for_timeout(200)
 
-        if is_auth_url(page.url):                      # ← new: bail immediately, don't retry
+        if is_auth_url(page.url):
             raise AuthExpiredError("Redirected to auth page during UUID fetch")
         try:
             page.wait_for_selector("table tbody tr", timeout=15000)
@@ -82,14 +83,22 @@ def get_uuid_for_single(page, surname: str, item: dict) -> str | None:
     rows   = page.query_selector_all("table tbody tr")
     target = None
 
-    for row in rows:
-        cells = row.query_selector_all("td")
-        if cells and cells[0].inner_text().strip() == item["name"]:
-            target = row
-            break
-
-    if not target and item["page_idx"] < len(rows):
-        target = rows[item["page_idx"]]
+    # Primary: use the exact row position recorded during the fast scrape.
+    # page_idx is the ground truth — it was set at the moment we saw this row.
+    if item["page_idx"] < len(rows):
+        candidate = rows[item["page_idx"]]
+        cells = candidate.query_selector_all("td")
+        row_name = cells[0].inner_text().strip() if cells else ""
+        if row_name == item["name"]:
+            target = candidate  # position AND name match — certain
+        else:
+            # Position mismatch (table reordered?) — fall back to name search
+            print(f"  ⚠️  {item['name']}: row {item['page_idx']} has '{row_name}', falling back to name search")
+            for row in rows:
+                cells = row.query_selector_all("td")
+                if cells and cells[0].inner_text().strip() == item["name"]:
+                    target = row
+                    break
 
     if not target:
         print(f"  {item['name']} → ❌ row not found")
@@ -100,10 +109,13 @@ def get_uuid_for_single(page, surname: str, item: dict) -> str | None:
         with page.expect_navigation(timeout=12000):
             target.click()
         page.wait_for_load_state("domcontentloaded", timeout=10000)
-        page.wait_for_timeout(500)
+        # OPTIMISED: was 500ms → 200ms
+        # Navigation completed; 200ms is enough for the URL to stabilise.
+        page.wait_for_timeout(200)
         uuid = extract_uuid_from_url(page.url)
         if not uuid:
-            page.wait_for_timeout(2000)
+            # OPTIMISED: was 2000ms → 1000ms for the UUID retry wait
+            page.wait_for_timeout(1000)
             uuid = extract_uuid_from_url(page.url)
         print(f"  {item['name']} → {uuid or '❌ no UUID'}")
     except Exception as e:

@@ -861,6 +861,13 @@ body {
   font-family: inherit; margin-left: auto; transition: var(--transition);
 }
 .history-rescan:hover { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 0 12px rgba(91,121,255,0.40); }
+.history-delete {
+  background: rgba(255,77,106,0.08); border: 1px solid rgba(255,77,106,0.30);
+  color: #FF8098; padding: 4px 10px; border-radius: var(--radius-xl);
+  font-size: 0.72rem; font-weight: 600; cursor: pointer;
+  font-family: inherit; margin-left: 6px; transition: var(--transition);
+}
+.history-delete:hover { background: rgba(255,77,106,0.22); border-color: #FF4D6A; color: #fff; }
 .history-empty { text-align: center; padding: 40px 0; color: var(--text-3); font-size: 0.9rem; }
 
 

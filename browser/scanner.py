@@ -9,8 +9,10 @@ browser/scanner.py — Orchestrates a full surname scan in two phases:
                check profile      → enrollment/screenings fill in immediately
                move to next
 
-Profiles now appear and get checked one at a time so the UI builds up
-progressively rather than showing all stubs first and then filling in data.
+Changes:
+  - Cache is only written once the scan completes fully — no partial saves
+  - stop_flag is checked both at loop top AND inside check_profile
+    (via _wait_for_page) so stop responds within ~1-2 seconds
 """
 
 from collections import defaultdict
@@ -39,9 +41,12 @@ def _load_from_cache(cache_key: str, surname: str) -> None:
     cached = state.scan_cache[cache_key]
     cached["from_cache"] = True
     state.scan_results   = cached
+
+    total  = cached.get("total", 0)
     state.status_message = (
-        f"Done — loaded {cached['total']} profiles for '{surname}' (cached)"
+        f"Done — loaded {total} profiles for '{surname}' (cached)"
     )
+
     phone_groups  = cached.get("phone_groups") or {}
     family_count  = len([v for v in phone_groups.values() if len(v) > 1])
     enrolled_zero = len([
@@ -50,7 +55,7 @@ def _load_from_cache(cache_key: str, surname: str) -> None:
     ])
     persistence.add_to_history(
         surname,
-        cached.get("total", 0),
+        total,
         family_count,
         enrolled_zero,
         len(cached.get("failed", [])),
@@ -96,6 +101,9 @@ def _run_live_scan(page, surname: str, cache_key: str):
     all_profiles = []
 
     for item in ordered_raw:
+        # ── Check stop at TOP of each profile iteration ──
+        # Also checked inside check_profile via _wait_for_page,
+        # so stop responds within the next page navigation (~1-2s)
         if state.stop_flag:
             break
 
@@ -112,8 +120,6 @@ def _run_live_scan(page, surname: str, cache_key: str):
         cookies = persistence.load_session_cookies()
         if cookies:
             new_ctx.add_cookies(cookies)
-        # OPTIMISED: was 300ms → 100ms
-        # Cookie injection is synchronous; 100ms is enough before navigation.
         page.wait_for_timeout(100)
 
         for login_attempt in range(2):
@@ -138,7 +144,7 @@ def _run_live_scan(page, surname: str, cache_key: str):
                 all_profiles[-1] = stub
                 _push(all_profiles, phone_groups, scanned=position)
 
-                if info.get("error") and info["error"] != "No UUID":
+                if info.get("error") and info["error"] not in ("No UUID", "Stopped"):
                     state.failed_profiles.append({
                         "name":  item["name"],
                         "uuid":  uuid,
@@ -147,8 +153,6 @@ def _run_live_scan(page, surname: str, cache_key: str):
                     state.scan_results["failed"] = state.failed_profiles
                     time.sleep(1)
 
-                # OPTIMISED: was 0.8s → 0.3s
-                # Brief cooldown between profiles to avoid hammering the server.
                 time.sleep(0.3)
                 break
 
@@ -172,7 +176,6 @@ def _run_live_scan(page, surname: str, cache_key: str):
                     state.scan_results["failed"] = state.failed_profiles
                     _push(all_profiles, phone_groups, scanned=position)
 
-
     # ── Wrap up ───────────────────────────────────────────
     state.is_searching = False
 
@@ -180,11 +183,15 @@ def _run_live_scan(page, surname: str, cache_key: str):
         state.status_message = (
             f"Stopped — scanned {state.scan_results['scanned']} of {total} for '{surname}'"
         )
+        # Cache is NOT saved on stop — only a complete scan writes to cache.
+        # A fresh re-scan will start from scratch next time.
+        print(f"⛔ Scan stopped at {state.scan_results['scanned']}/{total} profiles — cache NOT saved.")
         return page
 
     state.status_message = f"Done — scanned all {total} profiles for '{surname}'"
     print(state.status_message)
 
+    # ── Final complete cache entry — mark partial=False ───
     final = {
         "surname":      surname,
         "profiles":     all_profiles,
@@ -193,6 +200,8 @@ def _run_live_scan(page, surname: str, cache_key: str):
         "phone_groups": phone_groups,
         "failed":       state.failed_profiles,
         "from_cache":   False,
+        "partial":      False,          # complete scan
+        "cached_at":    time.time(),    # timestamp for 48hr expiry
     }
     state.scan_cache[cache_key] = final
     persistence.save_cache()

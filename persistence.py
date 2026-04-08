@@ -1,7 +1,10 @@
 """
 persistence.py — Handles all disk I/O: cache, search history, session cookies.
 
-Switched from pickle to JSON for the cache (safer, human-readable, deployable).
+Changes:
+  - Cache entries now carry a `cached_at` Unix timestamp
+  - Cache entries older than 48 hours are purged automatically on load
+  - Cache is only written on full scan completion — no partial/incremental saves
 """
 
 import json
@@ -16,13 +19,21 @@ from config import CACHE_FILE, HISTORY_FILE, SESSION_FILE, HISTORY_MAX_AGE_SECS
 # ── Cache ─────────────────────────────────────────────────
 
 def load_cache() -> None:
-    """Load surname scan cache from disk into state.scan_cache."""
+    """Load surname scan cache from disk, dropping entries older than 48h."""
     if not os.path.exists(CACHE_FILE):
         return
     try:
         with open(CACHE_FILE, "r") as f:
-            state.scan_cache = json.load(f)
-        print(f"✅ Loaded cache: {len(state.scan_cache)} surnames")
+            raw = json.load(f)
+        cutoff = time.time() - HISTORY_MAX_AGE_SECS   # 48 hours ago
+        # cached_at=0 default means old entries (no timestamp) are expired
+        state.scan_cache = {
+            k: v for k, v in raw.items()
+            if v.get("cached_at", 0) > cutoff
+        }
+        expired = len(raw) - len(state.scan_cache)
+        print(f"✅ Loaded cache: {len(state.scan_cache)} surnames "
+              f"({expired} expired entries removed)")
     except Exception as e:
         print(f"⚠️  Cache load failed: {e}")
         state.scan_cache = {}

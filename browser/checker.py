@@ -2,8 +2,8 @@
 browser/checker.py
 """
 
-
 import time
+import state  # needed for stop_flag checks
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from browser.helpers import extract_uuid_from_url, calc_age, AuthExpiredError, is_auth_url
 
@@ -34,6 +34,10 @@ def check_profile(page, uuid: str | None) -> dict:
             return result
         except Exception as e:
             err = str(e)[:120]
+            # If it's a stop signal, propagate immediately
+            if "Stop requested" in err:
+                result["error"] = "Stopped"
+                return result
             print(f"    ❌ Attempt {attempt + 1}/{PROFILE_RETRY_COUNT + 1} failed for {uuid}: {err}")
             if attempt < PROFILE_RETRY_COUNT:
                 print(f"    🔄 Retrying in {PROFILE_RETRY_DELAY}s...")
@@ -45,20 +49,13 @@ def check_profile(page, uuid: str | None) -> dict:
 
 
 def _wait_for_page(page, url: str, uuid: str) -> None:
-    page.goto(url)
+    # ── Check stop_flag BEFORE navigating ────────────────
+    # This makes stop respond within the next page navigation
+    # without touching any extraction logic.
+    if state.stop_flag:
+        raise RuntimeError("Stop requested by user")
 
-    # ── OPTIMISED: networkidle → domcontentloaded ──────────
-    # Why this is safe:
-    #   - "networkidle" waits for ALL network requests to stop for 500ms.
-    #     On a React SPA like Unite Us that makes continuous background API calls,
-    #     this easily takes 3–8 seconds per page — sometimes hitting the 20s timeout.
-    #   - "domcontentloaded" fires as soon as the HTML is parsed (~0.5–1.5s).
-    #   - The REAL readiness check happens immediately after this function returns:
-    #       • For /profile:   wait_for_selector("text=Member ID") is the guard
-    #       • For /screenings: wait_for_selector("text=/\d+ Screening Submission/") is the guard
-    #     Both of those wait for the ACTUAL DATA we need, not just "page loaded".
-    #     They are safer readiness signals than networkidle ever was.
-    # Saves: 2–8s per call, called twice per profile = 4–16s per profile.
+    page.goto(url)
     page.wait_for_load_state("domcontentloaded", timeout=15000)
     page.wait_for_timeout(800)
 
@@ -76,8 +73,6 @@ def _fetch_profile_data(page, base: str, uuid: str, result: dict) -> dict:
     _wait_for_page(page, base + "/profile", uuid)
 
     # Member ID — this selector wait IS the content-readiness guard.
-    # It replaces what networkidle used to do: we wait until "Member ID"
-    # actually appears in the DOM before reading it.
     try:
         page.wait_for_selector("text=Member ID", timeout=5000)
         page.wait_for_timeout(100)
@@ -95,8 +90,15 @@ def _fetch_profile_data(page, base: str, uuid: str, result: dict) -> dict:
     result["member_id"] = member_id or "—"
     print(f"    Member ID: {result['member_id']}")
 
-    # ── Scroll to trigger lazy-loaded sections ────────────
-    # iterations 10, pause 150ms (from previous optimisation)
+    # ── USER OBSERVATION: wait 5s before scrolling = page fully loads ──
+    # The user confirmed that a 5-second wait after the Member ID read
+    # allows the entire React component tree (including coverage pills)
+    # to finish rendering before any scroll is attempted.
+    # This replaces the old "scroll → wait → retry" uncertainty loop.
+    page.wait_for_timeout(5000)
+
+    # ── Scroll to trigger any remaining lazy sections ─────
+    # Page is mostly loaded after the 5s wait; scroll is a safety measure.
     prev_height = 0
     for _ in range(10):
         page.evaluate("window.scrollBy(0, 600)")
@@ -106,14 +108,10 @@ def _fetch_profile_data(page, base: str, uuid: str, result: dict) -> dict:
             break
         prev_height = curr_height
 
-    # 1500ms React render wait — unchanged, protects coverage accuracy
-    page.wait_for_timeout(1500)
+    # Reduced from 1500ms — page already settled after 5s pre-scroll wait
+    page.wait_for_timeout(800)
 
     # ── Social Care Coverage ──────────────────────────────
-    # OPTIMISED: timeout 8000 → 5000ms
-    # Why safe: the 1500ms React wait above already let the page settle.
-    # If "Enrolled" hasn't appeared in 5s after that, it genuinely isn't there.
-    # Saves: 3s per profile that has NO enrollment data (non-enrolled profiles).
     coverage_in_dom = False
     try:
         page.wait_for_selector("text=Enrolled", state="attached", timeout=5000)
@@ -125,7 +123,7 @@ def _fetch_profile_data(page, base: str, uuid: str, result: dict) -> dict:
         page.wait_for_timeout(200)
         coverages = _scrape_coverages(page)
 
-        # Safety net — unchanged (only fires when pills failed to load first time)
+        # Safety net — unchanged
         if not coverages:
             print("    No coverage pills on first read — waiting 3s and retrying...")
             page.wait_for_timeout(3000)
@@ -181,11 +179,6 @@ def _check_screenings(page, base: str, uuid: str, result: dict) -> dict:
     page.evaluate("window.scrollBy(0, 800)")
     page.wait_for_timeout(800)
 
-    # OPTIMISED: timeout 8000 → 5000ms
-    # Why safe: the selector is either there within a second or two of page load,
-    # or we fall through to the evaluate() fallback which reads innerText directly.
-    # The fallback path is unchanged and covers slow-loading pages.
-    # Saves: 3s on any profile that hits the timeout path.
     try:
         count_el = page.wait_for_selector(
             "text=/\\d+ Screening Submission/", state="attached", timeout=5000
@@ -193,11 +186,6 @@ def _check_screenings(page, base: str, uuid: str, result: dict) -> dict:
         result["screening_count"] = count_el.inner_text().strip()
         result["zero_screening"]  = result["screening_count"].startswith("0 ")
         print(f"    Screenings: {result['screening_count']}")
-        # ── OPTIMISED: about:blank removed ─────────────────
-        # The browser context is fully recycled in scanner.py at the start
-        # of each profile (page.context.close() → new_context()). Going to
-        # about:blank was a redundant extra page load that served no purpose.
-        # Saves: ~250ms per profile.
         return result
     except PlaywrightTimeoutError:
         pass
@@ -216,5 +204,4 @@ def _check_screenings(page, base: str, uuid: str, result: dict) -> dict:
         result["screening_count"] = "0 Screening Submissions"
 
     print(f"    Screenings (fallback): {result['screening_count']}")
-    # ── about:blank removed here too (same reason as above) ──
     return result

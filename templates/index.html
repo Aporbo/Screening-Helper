@@ -10,10 +10,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <!-- Red SVG Favicon -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23DC2626'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Arial Black,sans-serif' font-size='18' font-weight='900' fill='white'%3EU%3C/text%3E%3C/svg%3E">
+<!-- jsPDF for client-side PDF generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <style>
 /* ═══════════════════════════════════════════════════════
-   STICKY TOP BAR
+   STICKY TOP BAR — z-index 60
 ═══════════════════════════════════════════════════════ */
 #sticky-top-bar {
   position: sticky;
@@ -26,7 +28,6 @@
   box-shadow: 0 4px 32px rgba(0,0,32,0.55), 0 1px 0 rgba(91,121,255,0.10);
   padding-bottom: 8px;
 }
-/* Header inside sticky — no double border */
 #sticky-top-bar .header {
   position: static;
   background: transparent;
@@ -34,16 +35,10 @@
   box-shadow: none;
   border-bottom: none;
 }
-/* Search row inside sticky */
 #sticky-top-bar .search-row {
   margin-bottom: 0 !important;
   padding: 8px 28px 0;
 }
-/* Progress inside sticky */
-#sticky-top-bar .progress-wrap {
-  margin: 6px 28px 0;
-}
-/* Filter bar inside sticky — no extra sticky top offset */
 #sticky-top-bar #filter-area {
   padding: 6px 28px 0;
   display: none;
@@ -57,6 +52,58 @@
 }
 
 /* ═══════════════════════════════════════════════════════
+   SEARCH ICON — clickable SVG inside input
+═══════════════════════════════════════════════════════ */
+.search-icon-btn {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  transition: color 0.18s;
+  z-index: 2;
+}
+.search-icon-btn:hover { color: var(--primary); }
+.search-icon-btn svg { width: 16px; height: 16px; }
+
+/* ═══════════════════════════════════════════════════════
+   PROGRESS BAR — lives ABOVE cards, NOT in sticky
+═══════════════════════════════════════════════════════ */
+.progress-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 12px 18px;
+  margin-bottom: 16px;
+  display: none;
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(16px);
+}
+
+/* ═══════════════════════════════════════════════════════
+   COMPACT CARDS — smaller, text centered
+═══════════════════════════════════════════════════════ */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.card {
+  padding: 12px 14px !important;
+  text-align: center;
+}
+.card-icon { font-size: 15px !important; margin-bottom: 6px !important; }
+.card-num  { font-size: 1.6rem !important; }
+.card-lbl  { font-size: 0.67rem !important; margin-top: 3px !important; }
+
+/* ═══════════════════════════════════════════════════════
    COMPACT ROWS + CENTER TEXT
 ═══════════════════════════════════════════════════════ */
 .person-row { padding: 6px 12px !important; }
@@ -66,7 +113,6 @@
   display: flex;
   align-items: center;
 }
-/* Keep name left-aligned */
 .person-name {
   text-align: left !important;
   justify-content: flex-start !important;
@@ -74,10 +120,36 @@
 .list-header > div { text-align: center; justify-content: center; }
 
 /* ═══════════════════════════════════════════════════════
+   SERIAL NUMBER BADGES
+═══════════════════════════════════════════════════════ */
+.serial-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(91,121,255,0.18);
+  color: #A0B0FF;
+  border: 1px solid rgba(91,121,255,0.32);
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  min-width: 26px;
+  letter-spacing: 0.3px;
+}
+.serial-badge.family-serial {
+  background: rgba(13,207,234,0.14);
+  color: #5DE8F8;
+  border-color: rgba(13,207,234,0.30);
+}
+.serial-badge.solo-serial {
+  background: rgba(91,121,255,0.12);
+  color: #93A8FF;
+  border-color: rgba(91,121,255,0.24);
+}
+
+/* ═══════════════════════════════════════════════════════
    ROW STATUS COLORS — Solid backgrounds
 ═══════════════════════════════════════════════════════ */
-
-/* NOT ENROLLED — solid red tint, very visible */
 .person-row.row-not-enrolled {
   background: rgba(220, 38, 38, 0.16) !important;
   border-left: 3px solid #EF4444 !important;
@@ -85,8 +157,6 @@
 .person-row.row-not-enrolled:hover {
   background: rgba(220, 38, 38, 0.24) !important;
 }
-
-/* HAS SCREENINGS (1+) — solid teal tint */
 .person-row.row-has-screenings {
   background: rgba(13, 207, 234, 0.11) !important;
   border-left: 3px solid var(--teal) !important;
@@ -94,8 +164,6 @@
 .person-row.row-has-screenings:hover {
   background: rgba(13, 207, 234, 0.18) !important;
 }
-
-/* ACTIVE COPY ROW — purple highlight, persists until another row's copy is clicked */
 .person-row.copy-active {
   background: rgba(139, 92, 246, 0.22) !important;
   border-left: 3px solid #8B5CF6 !important;
@@ -103,6 +171,70 @@
 }
 .person-row.copy-active:hover {
   background: rgba(139, 92, 246, 0.30) !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SCREENING BADGES — 1+ = RED, 0 = GREEN (like Enrolled)
+═══════════════════════════════════════════════════════ */
+/* 0 Screenings → GREEN (good — needs screening, opportunity) */
+.screen-zero, .screen-low {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(34, 200, 124, 0.12);
+  color: #4ADEA0;
+  padding: 3px 10px; border-radius: var(--radius-xl);
+  font-size: 0.72rem; font-weight: 700;
+  border: 1px solid rgba(34, 200, 124, 0.28);
+  transition: none;
+}
+/* 1+ Screenings → RED (attention — already has submissions) */
+.screen-has {
+  display: inline-flex; align-items: center;
+  background: rgba(255, 60, 80, 0.14);
+  color: #FF6B80;
+  padding: 3px 10px; border-radius: var(--radius-xl);
+  font-size: 0.72rem; font-weight: 700;
+  border: 1px solid rgba(255, 60, 80, 0.32);
+}
+.screen-loading {
+  display: inline-block; background: var(--surface-2); color: var(--text-3);
+  padding: 3px 10px; border-radius: var(--radius-xl);
+  font-size: 0.72rem; border: 1px solid var(--border);
+}
+
+/* ═══════════════════════════════════════════════════════
+   PARTIAL CACHE WARNING BANNER
+═══════════════════════════════════════════════════════ */
+.partial-warning {
+  background: rgba(249, 168, 37, 0.12);
+  border: 1px solid rgba(249, 168, 37, 0.35);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  font-size: 0.81rem;
+  color: #FFCB6B;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   PDF DOWNLOAD BUTTON
+═══════════════════════════════════════════════════════ */
+.btn-pdf {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 16px;
+  background: rgba(91,121,255,0.10);
+  color: #93A8FF;
+  border: 1.5px solid rgba(91,121,255,0.28);
+  border-radius: var(--radius-lg);
+  font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: var(--transition); white-space: nowrap;
+}
+.btn-pdf:hover {
+  background: rgba(91,121,255,0.20);
+  border-color: rgba(91,121,255,0.55);
+  color: #BCC9FF;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -123,107 +255,48 @@
   flex-direction: column;
 }
 #notepad-panel.open { display: flex; }
-
 .notepad-header {
-  padding: 18px 22px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: rgba(22, 40, 70, 0.98);
-  backdrop-filter: blur(20px);
-  flex-shrink: 0;
+  padding: 18px 22px; border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+  background: rgba(22, 40, 70, 0.98); backdrop-filter: blur(20px); flex-shrink: 0;
 }
-.notepad-title {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.notepad-subtitle {
-  font-size: 0.72rem;
-  color: var(--text-3);
-  font-weight: 400;
-  margin-top: 2px;
-}
+.notepad-title { font-size: 0.95rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.notepad-subtitle { font-size: 0.72rem; color: var(--text-3); font-weight: 400; margin-top: 2px; }
 .notepad-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 16px 22px;
-  gap: 10px;
-  overflow: hidden;
-  min-height: 0;
+  flex: 1; display: flex; flex-direction: column;
+  padding: 16px 22px; gap: 10px; overflow: hidden; min-height: 0;
 }
 #global-notepad-textarea {
-  flex: 1;
-  width: 100%;
-  padding: 12px 14px;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius);
-  font-size: 0.86rem;
-  font-family: inherit;
-  resize: none;
-  outline: none;
-  color: var(--text);
-  background: var(--surface-2);
-  line-height: 1.65;
-  transition: var(--transition);
-  min-height: 0;
+  flex: 1; width: 100%; padding: 12px 14px;
+  border: 1.5px solid var(--border); border-radius: var(--radius);
+  font-size: 0.86rem; font-family: inherit; resize: none; outline: none;
+  color: var(--text); background: var(--surface-2); line-height: 1.65;
+  transition: var(--transition); min-height: 0;
 }
 #global-notepad-textarea:focus {
-  border-color: var(--primary);
-  background: var(--surface);
+  border-color: var(--primary); background: var(--surface);
   box-shadow: 0 0 0 3px rgba(91,121,255,0.13);
 }
 #global-notepad-textarea::placeholder { color: var(--text-3); }
 .notepad-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-shrink: 0;
+  display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
 }
 .notepad-char-count { font-size: 0.73rem; color: var(--text-3); }
-.notepad-saved-msg {
-  font-size: 0.78rem;
-  color: #4ADEA0;
-  font-weight: 600;
-  display: none;
+.notepad-autosave-indicator {
+  font-size: 0.72rem; color: #4ADEA0; font-weight: 600;
+  opacity: 0; transition: opacity 0.4s;
 }
+.notepad-autosave-indicator.show { opacity: 1; }
 .notepad-actions { display: flex; gap: 8px; flex-shrink: 0; }
-.notepad-save-btn {
-  flex: 1;
-  padding: 9px;
-  background: linear-gradient(135deg, #4D6FFF, #7B90FF);
-  color: white;
-  border: none;
-  border-radius: var(--radius);
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: var(--transition);
-  box-shadow: 0 2px 12px rgba(91,121,255,0.38);
-}
-.notepad-save-btn:hover { background: linear-gradient(135deg, #5B7DFF, #8EA3FF); }
 .notepad-clear-btn {
-  padding: 9px 14px;
-  background: var(--danger-light);
-  color: var(--danger);
-  border: 1px solid rgba(255,77,106,0.28);
-  border-radius: var(--radius);
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: var(--transition);
+  padding: 9px 14px; background: var(--danger-light); color: var(--danger);
+  border: 1px solid rgba(255,77,106,0.28); border-radius: var(--radius);
+  font-size: 0.85rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: var(--transition);
 }
 .notepad-clear-btn:hover { background: rgba(255,77,106,0.22); }
 
 /* ═══════════════════════════════════════════════════════
-   PER-MEMBER NOTE STYLES (unchanged)
+   PER-MEMBER NOTE STYLES
 ═══════════════════════════════════════════════════════ */
 .note-btn {
   display: inline-flex; align-items: center; gap: 3px;
@@ -257,13 +330,18 @@
   color: var(--text); background: var(--surface); line-height: 1.5; transition: var(--transition);
 }
 .note-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(61,90,254,0.1); }
+.note-autosave-indicator {
+  font-size: 0.72rem; color: #4ADEA0; font-weight: 600;
+  margin-top: 4px; opacity: 0; transition: opacity 0.4s; text-align: right;
+}
+.note-autosave-indicator.show { opacity: 1; }
 .note-word-count { font-size: 0.73rem; color: var(--text-3); margin-top: 5px; text-align: right; }
 .note-word-count.over { color: var(--danger); font-weight: 600; }
-.note-actions { display: flex; gap: 8px; margin-top: 12px; }
-.note-save { flex: 1; padding: 9px; background: var(--primary); color: white; border: none; border-radius: var(--radius); font-size: 0.85rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: var(--transition); }
+.note-actions { display: flex; gap: 8px; margin-top: 10px; }
+.note-save { flex: 1; padding: 8px; background: var(--primary); color: white; border: none; border-radius: var(--radius); font-size: 0.85rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: var(--transition); }
 .note-save:hover { background: #2947e8; }
 .note-save:disabled { background: var(--border-strong); color: var(--text-3); cursor: not-allowed; }
-.note-delete { padding: 9px 14px; background: var(--danger-light); color: var(--danger); border: 1px solid #FECACA; border-radius: var(--radius); font-size: 0.85rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: var(--transition); }
+.note-delete { padding: 8px 14px; background: var(--danger-light); color: var(--danger); border: 1px solid #FECACA; border-radius: var(--radius); font-size: 0.85rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: var(--transition); }
 .note-delete:hover { background: #FEE2E2; }
 .note-text {
   grid-column: 1 / -1; margin: 2px 0 6px 0; padding: 6px 10px;
@@ -287,7 +365,7 @@
   pointer-events: none; z-index: 150;
 }
 .scroll-top-btn.visible { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
-.scroll-top-btn:hover { background: #2947e8; transform: translateY(-5px) scale(1.1); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+.scroll-top-btn:hover { background: #2947e8; transform: translateY(-5px) scale(1.1); }
 .scroll-top-btn:active { transform: translateY(-2px) scale(0.95); }
 </style>
 
@@ -303,7 +381,8 @@
 </div>
 
 <!-- ══════════════════════════════════════════════════
-     STICKY TOP BAR
+     STICKY TOP BAR — Header + Search + Filters only
+     Progress bar is NOT here — it's above the cards
 ═══════════════════════════════════════════════════ -->
 <div id="sticky-top-bar">
 
@@ -315,7 +394,7 @@
         <span class="logo-text">Unite<span>Us</span> Tools</span>
       </div>
       <div class="header-sep"></div>
-      <!-- Status pill in center of header -->
+      <!-- Status pill -->
       <div class="status-pill idle" id="status-bar" style="flex:1;margin:0 16px;">
         <span id="status-icon">●</span>
         <span id="status-text">Waiting for search...</span>
@@ -339,23 +418,22 @@
   <!-- Search Row -->
   <div class="search-row">
     <div class="search-wrap">
-      <span class="search-icon">🔎</span>
-      <input type="text" id="scan-input" placeholder="Enter a surname to scan all profiles — e.g. Basnet, Singh, Torres..." />
+      <!-- Clickable scan icon inside the input box -->
+      <button class="search-icon-btn" onclick="startScan()" title="Click to scan">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="7"/>
+          <line x1="16.5" y1="16.5" x2="22" y2="22"/>
+        </svg>
+      </button>
+      <input type="text" id="scan-input"
+        style="padding-left: 40px;"
+        placeholder="Enter a surname to scan all profiles — e.g. Basnet, Singh, Torres..." />
     </div>
     <button class="btn-primary" id="scan-btn" onclick="startScan()">Scan Profiles</button>
     <button class="btn-stop" id="stop-btn" onclick="stopSearch()">⛔ Stop</button>
   </div>
 
-  <!-- Progress -->
-  <div class="progress-wrap" id="prog-wrap">
-    <div class="progress-header">
-      <div class="progress-lbl" id="prog-lbl">Scanning profiles...</div>
-      <div class="progress-pct" id="prog-pct">0%</div>
-    </div>
-    <div class="progress-bg"><div class="progress-bar" id="prog-bar"></div></div>
-  </div>
-
-  <!-- Filters -->
+  <!-- Filters (no progress bar here) -->
   <div id="filter-area">
     <div class="filter-bar">
       <button class="filter-btn active" onclick="setFilter('need_screening', this)">🔔 Need Screening</button>
@@ -378,7 +456,16 @@
 ═══════════════════════════════════════════════════ -->
 <div class="container" style="padding-top: 16px;">
 
-  <!-- Metric cards -->
+  <!-- PROGRESS BAR — above cards, outside sticky -->
+  <div class="progress-wrap" id="prog-wrap">
+    <div class="progress-header">
+      <div class="progress-lbl" id="prog-lbl">Scanning profiles...</div>
+      <div class="progress-pct" id="prog-pct">0%</div>
+    </div>
+    <div class="progress-bg"><div class="progress-bar" id="prog-bar"></div></div>
+  </div>
+
+  <!-- Metric cards (compact) -->
   <div class="cards">
     <div class="card">
       <div class="card-icon">👥</div>
@@ -427,27 +514,26 @@
   </div>
 </div>
 
-<!-- ── Global Notepad Panel ── -->
+<!-- ── Global Notepad Panel (auto-save) ── -->
 <div class="panel-overlay" id="notepad-overlay" onclick="closeNotepad()"></div>
 <div id="notepad-panel">
   <div class="notepad-header">
     <div>
       <div class="notepad-title">📋 Global Notepad</div>
-      <div class="notepad-subtitle">Quick notes — saved in browser storage</div>
+      <div class="notepad-subtitle">Auto-saved as you type</div>
     </div>
     <button class="panel-close" onclick="closeNotepad()">✕</button>
   </div>
   <div class="notepad-body">
     <textarea id="global-notepad-textarea"
-      placeholder="Jot down names, IDs, observations — anything you need across searches. Saved locally in your browser."
+      placeholder="Jot down names, IDs, observations — anything you need across searches. Auto-saved locally."
       oninput="onNotepadInput()"></textarea>
     <div class="notepad-meta">
       <span class="notepad-char-count" id="notepad-char-count">0 characters</span>
-      <span class="notepad-saved-msg" id="notepad-saved-msg">✅ Saved!</span>
+      <span class="notepad-autosave-indicator" id="notepad-saved-indicator">✅ Saved</span>
     </div>
     <div class="notepad-actions">
-      <button class="notepad-save-btn" onclick="saveGlobalNotepad()">💾 Save Note</button>
-      <button class="notepad-clear-btn" onclick="clearGlobalNotepad()">🗑 Clear</button>
+      <button class="notepad-clear-btn" onclick="clearGlobalNotepad()" style="flex:1">🗑 Clear Notepad</button>
     </div>
   </div>
 </div>
@@ -476,51 +562,75 @@
     <div class="save-msg" id="save-msg">✅ Saved! Reconnecting...</div>
     <hr class="divider">
     <div class="section-lbl">Cache</div>
-    <p style="font-size:0.82rem;color:var(--text-2);margin-bottom:14px;line-height:1.6">Cached results load instantly without re-scanning Unite Us.</p>
+    <p style="font-size:0.82rem;color:var(--text-2);margin-bottom:14px;line-height:1.6">
+      Cached results load instantly. Entries expire automatically after 48 hours.<br>
+      You can also clear them manually here.
+    </p>
     <button class="danger-btn" onclick="clearCache()">🗑 Clear All Cached Results</button>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
+<!-- Scroll to top -->
+<button class="scroll-top-btn" id="scroll-top-btn"
+  onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">↑</button>
+
+<!-- Per-member note popup (auto-save) -->
+<div class="note-popup" id="note-popup" style="display:none" onclick="if(event.target===this)closeNote()">
+  <div class="note-box">
+    <div class="note-box-header">
+      <div class="note-box-name" id="note-popup-name"></div>
+      <button class="note-box-close" onclick="closeNote()">✕</button>
+    </div>
+    <textarea class="note-textarea" id="note-textarea"
+      placeholder="Add a note... (max 50 words) — auto-saved" oninput="onNoteInput()"></textarea>
+    <div class="note-autosave-indicator" id="note-autosave-indicator">✅ Auto-saved</div>
+    <div class="note-word-count" id="note-word-count">0 / 50 words</div>
+    <div class="note-actions">
+      <button class="note-save" id="note-save-btn" onclick="saveNote()">Save &amp; Close</button>
+      <button class="note-delete" id="note-delete-btn" onclick="deleteNote()" style="display:none">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════ -->
 <script>
-  let polling = null;
-  let currentFilter = 'need_screening';
-  let currentData = null;
-  let scanStartTime = null;
-  let timerInterval = null;
-  let lastEstimate = null;
+  let polling        = null;
+  let currentFilter  = 'need_screening';
+  let currentData    = null;
+  let scanStartTime  = null;
+  let timerInterval  = null;
+  let lastEstimate   = null;
   let lastEstimateTime = null;
+  let activeCopyRowId  = null;
 
-  // Track which row was last "copied from" — persists across re-renders
-  let activeCopyRowId = null;
-
-  // ── ETA Timer ──
+  // ════════════════════════════════════════════
+  // ETA Timer
+  // ════════════════════════════════════════════
   function startETA() {
-    scanStartTime = Date.now();
-    lastEstimate = null; lastEstimateTime = null;
+    scanStartTime = Date.now(); lastEstimate = null; lastEstimateTime = null;
     document.getElementById('eta-timer').textContent = '· Estimating...';
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = setInterval(tickETA, 1000);
   }
   function tickETA() {
-    if (lastEstimate === null || lastEstimateTime === null) { document.getElementById('eta-timer').textContent = '· Estimating...'; return; }
-    const elapsed = (Date.now() - lastEstimateTime) / 1000;
-    const remaining = Math.max(0, Math.round(lastEstimate - elapsed));
-    document.getElementById('eta-timer').textContent = '· ' + formatETA(remaining);
+    if (!lastEstimate || !lastEstimateTime) { document.getElementById('eta-timer').textContent = '· Estimating...'; return; }
+    const rem = Math.max(0, Math.round(lastEstimate - (Date.now() - lastEstimateTime)/1000));
+    document.getElementById('eta-timer').textContent = '· ' + formatETA(rem);
   }
   function updateETAEstimate(scanned, total) {
     if (!scanStartTime || scanned === 0) return;
-    const elapsed = (Date.now() - scanStartTime) / 1000;
-    const perProfile = elapsed / scanned;
-    lastEstimate = Math.round(perProfile * (total - scanned));
+    lastEstimate = Math.round(((Date.now()-scanStartTime)/1000/scanned) * (total-scanned));
     lastEstimateTime = Date.now();
   }
   function formatETA(secs) {
     if (secs <= 0) return 'Almost done...';
-    const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = secs % 60;
-    if (h > 0) return `~${h}h ${m}m remaining`;
-    if (m > 0) return `~${m}m ${s}s remaining`;
+    const h=Math.floor(secs/3600), m=Math.floor((secs%3600)/60), s=secs%60;
+    if (h>0) return `~${h}h ${m}m remaining`;
+    if (m>0) return `~${m}m ${s}s remaining`;
     return `~${s}s remaining`;
   }
   function stopETA(done) {
@@ -529,43 +639,45 @@
     setTimeout(() => document.getElementById('eta-timer').textContent = '', 3000);
   }
 
-  // ── Toast ──
+  // ════════════════════════════════════════════
+  // Toast
+  // ════════════════════════════════════════════
   function showToast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg; t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2500);
   }
 
-  // ── Copy with active-row tracking ──
-  // rowId is the unique identifier for the row (uuid or name+dob combo)
+  // ════════════════════════════════════════════
+  // Copy + Active Row Tracking
+  // ════════════════════════════════════════════
   function copyText(text, label, rowId) {
     navigator.clipboard.writeText(text).then(() => {
       showToast('Copied ' + label + ': ' + text);
-      if (rowId !== undefined && rowId !== null) setActiveCopyRow(rowId);
+      if (rowId != null) setActiveCopyRow(rowId);
     });
   }
   function copyPhone(raw, rowId) {
     let d = raw.replace(/[^0-9]/g, '');
-    if (d.length === 11 && d.startsWith('1')) d = d.slice(1);
-    if (d.length !== 10) { copyText(raw, 'phone', rowId); return; }
-    const fmt = '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6);
+    if (d.length===11 && d.startsWith('1')) d = d.slice(1);
+    const fmt = d.length===10 ? '('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6) : raw;
     copyText(fmt, 'phone', rowId);
   }
-
   function setActiveCopyRow(rowId) {
-    // Remove highlight from previous
     if (activeCopyRowId !== null) {
-      document.querySelectorAll(`.person-row[data-row-id]`).forEach(el => {
+      document.querySelectorAll('.person-row').forEach(el => {
         if (el.dataset.rowId === activeCopyRowId) el.classList.remove('copy-active');
       });
     }
     activeCopyRowId = rowId;
-    document.querySelectorAll(`.person-row[data-row-id]`).forEach(el => {
+    document.querySelectorAll('.person-row').forEach(el => {
       if (el.dataset.rowId === rowId) el.classList.add('copy-active');
     });
   }
 
-  // ── Filter ──
+  // ════════════════════════════════════════════
+  // Filter
+  // ════════════════════════════════════════════
   function setFilter(f, btn) {
     currentFilter = f;
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -573,30 +685,31 @@
     renderResults();
   }
 
-  // ── History ──
+  // ════════════════════════════════════════════
+  // History Panel
+  // ════════════════════════════════════════════
   function openHistory() {
-    fetch('/history').then(r => r.json()).then(data => {
+    fetch('/history').then(r=>r.json()).then(data => {
       const body = document.getElementById('history-body');
-      if (!data.history || data.history.length === 0) {
-        body.innerHTML = '<div class="history-empty">No searches in the last 48 hours.</div>';
+      if (!data.history || data.history.length===0) {
+        body.innerHTML='<div class="history-empty">No searches in the last 48 hours.</div>';
       } else {
-        let html = '';
+        let html='';
         for (const h of data.history) {
-          html += `<div class="history-item">
-            <div class="history-surname">
-              ${h.surname.toUpperCase()}
+          html+=`<div class="history-item" id="hist-${h.surname.toLowerCase()}">
+            <div class="history-surname">${h.surname.toUpperCase()}
+              <button class="history-delete" onclick="deleteCacheEntry('${h.surname}')" title="Delete cached result">✕ Delete</button>
               <button class="history-rescan" onclick="rescan('${h.surname}')">↻ Rescan</button>
             </div>
-            <div class="history-time">🕐 ${h.time_str}</div>
+            <div class="history-time">${h.time_str}</div>
             <div class="history-stats">
               <span class="h-stat">${h.total} profiles</span>
               <span class="h-stat">${h.families} families</span>
               <span class="h-stat green">${h.enrolled} need screening</span>
-              ${h.failed > 0 ? `<span class="h-stat red">${h.failed} failed</span>` : ''}
-            </div>
-          </div>`;
+              ${h.failed>0?`<span class="h-stat red">${h.failed} failed</span>`:''}
+            </div></div>`;
         }
-        body.innerHTML = html;
+        body.innerHTML=html;
       }
     });
     document.getElementById('history-panel').classList.add('open');
@@ -612,11 +725,38 @@
     startScan();
   }
 
-  // ── Global Notepad ──
+  async function deleteCacheEntry(surname) {
+    await fetch('/delete-cache?q=' + encodeURIComponent(surname));
+    // Remove item from panel immediately
+    const el = document.getElementById('hist-' + surname.toLowerCase());
+    if (el) {
+      el.style.transition = 'opacity 0.25s';
+      el.style.opacity = '0';
+      setTimeout(() => {
+        el.remove();
+        // If panel is now empty, show empty state
+        const body = document.getElementById('history-body');
+        if (!body.querySelector('.history-item')) {
+          body.innerHTML = '<div class="history-empty">No searches in the last 48 hours.</div>';
+        }
+        // Update badge count
+        const remaining = document.querySelectorAll('.history-item').length;
+        const badge = document.getElementById('history-badge');
+        badge.textContent = remaining;
+        badge.style.display = remaining > 0 ? 'inline' : 'none';
+      }, 260);
+    }
+    showToast('Cache entry deleted — next scan will be live');
+  }
+
+  // ════════════════════════════════════════════
+  // Global Notepad — AUTO-SAVE on every keystroke
+  // ════════════════════════════════════════════
+  let notepadSaveTimer = null;
   function openNotepad() {
     const saved = localStorage.getItem('uu_global_notepad') || '';
     document.getElementById('global-notepad-textarea').value = saved;
-    onNotepadInput();
+    updateNotepadMeta(saved);
     document.getElementById('notepad-panel').classList.add('open');
     document.getElementById('notepad-overlay').classList.add('open');
     setTimeout(() => document.getElementById('global-notepad-textarea').focus(), 80);
@@ -626,28 +766,35 @@
     document.getElementById('notepad-overlay').classList.remove('open');
   }
   function onNotepadInput() {
-    const len = document.getElementById('global-notepad-textarea').value.length;
-    document.getElementById('notepad-char-count').textContent = len.toLocaleString() + ' character' + (len === 1 ? '' : 's');
-  }
-  function saveGlobalNotepad() {
     const text = document.getElementById('global-notepad-textarea').value;
-    localStorage.setItem('uu_global_notepad', text);
-    const msg = document.getElementById('notepad-saved-msg');
-    msg.style.display = 'inline';
-    setTimeout(() => { msg.style.display = 'none'; }, 1800);
-    showToast('📋 Notepad saved');
+    updateNotepadMeta(text);
+    // Auto-save with 600ms debounce
+    if (notepadSaveTimer) clearTimeout(notepadSaveTimer);
+    notepadSaveTimer = setTimeout(() => {
+      localStorage.setItem('uu_global_notepad', text);
+      const ind = document.getElementById('notepad-saved-indicator');
+      ind.classList.add('show');
+      setTimeout(() => ind.classList.remove('show'), 1500);
+    }, 600);
+  }
+  function updateNotepadMeta(text) {
+    const len = text.length;
+    document.getElementById('notepad-char-count').textContent =
+      len.toLocaleString() + ' character' + (len===1?'':'s');
   }
   function clearGlobalNotepad() {
     if (!confirm('Clear the entire notepad? This cannot be undone.')) return;
     document.getElementById('global-notepad-textarea').value = '';
     localStorage.removeItem('uu_global_notepad');
-    onNotepadInput();
+    updateNotepadMeta('');
     showToast('🗑 Notepad cleared');
   }
 
-  // ── Settings ──
+  // ════════════════════════════════════════════
+  // Settings
+  // ════════════════════════════════════════════
   function openSettings() {
-    fetch('/creds').then(r => r.json()).then(d => {
+    fetch('/creds').then(r=>r.json()).then(d => {
       document.getElementById('cred-email').value = d.email || '';
       document.getElementById('cred-password').value = '';
     });
@@ -659,12 +806,12 @@
     document.getElementById('settings-overlay').classList.remove('open');
   }
   async function saveCredentials() {
-    const email = document.getElementById('cred-email').value.trim();
+    const email    = document.getElementById('cred-email').value.trim();
     const password = document.getElementById('cred-password').value.trim();
-    if (!email || !password) { showToast('Enter both fields'); return; }
-    await fetch('/save-creds?email=' + encodeURIComponent(email) + '&password=' + encodeURIComponent(password));
-    document.getElementById('save-msg').style.display = 'block';
-    setTimeout(() => { document.getElementById('save-msg').style.display = 'none'; closeSettings(); }, 2000);
+    if (!email||!password) { showToast('Enter both fields'); return; }
+    await fetch('/save-creds?email='+encodeURIComponent(email)+'&password='+encodeURIComponent(password));
+    document.getElementById('save-msg').style.display='block';
+    setTimeout(()=>{document.getElementById('save-msg').style.display='none'; closeSettings();}, 2000);
   }
   async function clearCache() {
     await fetch('/clear-cache');
@@ -672,13 +819,14 @@
     closeSettings();
   }
 
-  // ── Enhanced Stop: immediate termination, ready for new search without refresh ──
+  // ════════════════════════════════════════════
+  // STOP — Immediate: sets flag on server, kills
+  //         polling instantly, resets all UI
+  // ════════════════════════════════════════════
   async function stopSearch() {
     await fetch('/stop');
-    // Halt polling immediately
     if (polling) { clearInterval(polling); polling = null; }
     stopETA(false);
-    // Reset all UI state — user can type a new surname right away
     document.getElementById('stop-btn').style.display = 'none';
     document.getElementById('scan-btn').disabled = false;
     document.getElementById('prog-wrap').style.display = 'none';
@@ -686,16 +834,16 @@
     pill.className = 'status-pill stopped';
     document.getElementById('status-icon').outerHTML = '<span id="status-icon">⛔</span>';
     document.getElementById('status-text').textContent = 'Stopped — ready for a new search.';
-    showToast('⛔ Stopped. Enter a surname to start a new search.');
-    // Clear copy-tracking highlight
     activeCopyRowId = null;
+    showToast('⛔ Stopped. Enter a surname to start a new search.');
   }
 
-  // ── Start scan ──
+  // ════════════════════════════════════════════
+  // Start Scan
+  // ════════════════════════════════════════════
   async function startScan() {
     const s = document.getElementById('scan-input').value.trim();
     if (!s) return;
-    // Reset copy-tracking on new scan
     activeCopyRowId = null;
     scanStartTime = null; lastEstimate = null; lastEstimateTime = null;
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
@@ -703,16 +851,21 @@
     document.getElementById('scan-btn').disabled = true;
     document.getElementById('stop-btn').style.display = 'inline-block';
     document.getElementById('prog-wrap').style.display = 'block';
+    document.getElementById('prog-bar').style.width = '0%';
+    document.getElementById('prog-pct').textContent = '0%';
+    document.getElementById('prog-lbl').textContent = 'Collecting profiles...';
     document.getElementById('filter-area').style.display = 'none';
     document.getElementById('results').innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Collecting profiles from Unite Us...</p></div>';
     ['s-total','s-families','s-enrolled','s-failed'].forEach(id => document.getElementById(id).textContent = '—');
-    await fetch('/scan?q=' + encodeURIComponent(s));
+    await fetch('/scan?q='+encodeURIComponent(s));
     if (polling) clearInterval(polling);
     polling = setInterval(fetchResults, 2500);
     fetchResults();
   }
 
-  // ── Main fetch ──
+  // ════════════════════════════════════════════
+  // Main Data Fetch
+  // ════════════════════════════════════════════
   async function fetchResults() {
     try {
       const res = await fetch('/data');
@@ -739,7 +892,8 @@
         if (polling) { clearInterval(polling); polling = null; }
       } else if (data.status.includes('Done') || data.status.includes('Waiting')) {
         pill.className = data.status.includes('Done') ? 'status-pill done' : 'status-pill idle';
-        document.getElementById('status-icon').outerHTML = data.status.includes('Done') ? '<span id="status-icon">✓</span>' : '<span id="status-icon">●</span>';
+        document.getElementById('status-icon').outerHTML = data.status.includes('Done')
+          ? '<span id="status-icon">✓</span>' : '<span id="status-icon">●</span>';
         document.getElementById('scan-btn').disabled = false;
         document.getElementById('stop-btn').style.display = 'none';
         if (data.status.includes('Done')) { document.getElementById('prog-wrap').style.display = 'none'; stopETA(true); }
@@ -753,15 +907,15 @@
       currentData = data.scan;
 
       const { profiles, total, scanned, phone_groups, failed, from_cache } = data.scan;
-      document.getElementById('s-total').textContent = total || '—';
-      document.getElementById('s-failed').textContent = failed ? failed.length : 0;
+      document.getElementById('s-total').textContent   = total || '—';
+      document.getElementById('s-failed').textContent  = failed ? failed.length : 0;
 
-      const familyCount        = phone_groups ? Object.values(phone_groups).filter(g => g.length > 1).length : 0;
-      const enrolledZeroScreen = profiles.filter(p => p.checked && p.any_enrolled && p.zero_screening).length;
+      const familyCount        = phone_groups ? Object.values(phone_groups).filter(g=>g.length>1).length : 0;
+      const enrolledZeroScreen = profiles.filter(p=>p.checked&&p.any_enrolled&&p.zero_screening).length;
       document.getElementById('s-families').textContent = familyCount;
       document.getElementById('s-enrolled').textContent = enrolledZeroScreen;
 
-      fetch('/history').then(r => r.json()).then(d => {
+      fetch('/history').then(r=>r.json()).then(d=>{
         const badge = document.getElementById('history-badge');
         const count = d.history ? d.history.length : 0;
         badge.textContent = count;
@@ -769,38 +923,41 @@
       });
 
       if (total && scanned !== undefined) {
-        const pct = Math.round((scanned / total) * 100);
-        document.getElementById('prog-bar').style.width = pct + '%';
-        document.getElementById('prog-pct').textContent = pct + '%';
-        const cacheNote = from_cache ? ' · from cache' : '';
-        document.getElementById('prog-lbl').textContent = `Scanned ${scanned} of ${total} profiles${cacheNote}`;
+        const pct = Math.round((scanned/total)*100);
+        document.getElementById('prog-bar').style.width = pct+'%';
+        document.getElementById('prog-pct').textContent = pct+'%';
+        document.getElementById('prog-lbl').textContent =
+          `Scanned ${scanned} of ${total} profiles${from_cache ? ' · from cache' : ''}`;
       }
 
       if (profiles && profiles.length > 0) {
         document.getElementById('filter-area').style.display = 'block';
         renderResults();
       }
-
       if (failed && failed.length > 0 && !data.searching) renderFailed(failed);
 
     } catch(e) { console.error(e); }
   }
 
+  // ════════════════════════════════════════════
+  // Render Results
+  // ════════════════════════════════════════════
   function renderResults() {
     if (!currentData) return;
     const { surname, profiles, phone_groups, from_cache } = currentData;
     const nameQuery   = (document.getElementById('name-search').value   || '').toLowerCase();
-    const numberQuery = (document.getElementById('number-search').value || '').replace(/[^0-9]/g, '');
+    const numberQuery = (document.getElementById('number-search').value || '').replace(/[^0-9]/g,'');
+    const isPartial   = currentData.partial || false;
 
     let filtered = profiles.filter(p => {
       if (nameQuery   && !p.name.toLowerCase().includes(nameQuery)) return false;
-      if (numberQuery && !(p.raw_phone || '').replace(/[^0-9]/g, '').includes(numberQuery)) return false;
-      if (currentFilter === 'not_enrolled')   return p.checked && !p.any_enrolled;
-      if (currentFilter === 'enrolled')       return p.checked && p.any_enrolled;
-      if (currentFilter === 'zero_screen')    return p.checked && p.zero_screening;
-      if (currentFilter === 'has_screen')     return p.checked && !p.zero_screening;
-      if (currentFilter === 'need_screening') return p.checked && p.any_enrolled && p.zero_screening;
-      if (currentFilter === 'family') {
+      if (numberQuery && !(p.raw_phone||'').replace(/[^0-9]/g,'').includes(numberQuery)) return false;
+      if (currentFilter==='not_enrolled')   return p.checked && !p.any_enrolled;
+      if (currentFilter==='enrolled')       return p.checked && p.any_enrolled;
+      if (currentFilter==='zero_screen')    return p.checked && p.zero_screening;
+      if (currentFilter==='has_screen')     return p.checked && !p.zero_screening;
+      if (currentFilter==='need_screening') return p.checked && p.any_enrolled && p.zero_screening;
+      if (currentFilter==='family') {
         const grp = phone_groups || {};
         return p.raw_phone && grp[p.raw_phone] && grp[p.raw_phone].length > 1;
       }
@@ -811,41 +968,59 @@
 
     const phoneMap = {};
     for (const p of filtered) {
-      const key = p.raw_phone || '__none__' + p.name;
+      const key = p.raw_phone || '__none__'+p.name;
       if (!phoneMap[key]) phoneMap[key] = [];
       phoneMap[key].push(p);
     }
 
-    const pg = phone_groups || {};
-    const families = Object.entries(phoneMap).filter(([k, v]) => !k.startsWith('__none__') && pg[k] && pg[k].length > 1);
-    const solos    = Object.entries(phoneMap).filter(([k, v]) => k.startsWith('__none__') || !pg[k] || pg[k].length === 1);
+    const pg       = phone_groups || {};
+    const families = Object.entries(phoneMap).filter(([k])=>!k.startsWith('__none__')&&pg[k]&&pg[k].length>1);
+    const solos    = Object.entries(phoneMap).filter(([k])=> k.startsWith('__none__')||!pg[k]||pg[k].length===1);
 
-    let html = `<div class="section-heading">
+    let html = '';
+
+    // Partial cache warning
+    if (isPartial) {
+      html += `<div class="partial-warning">
+        ⚠️ These are <strong>partial results</strong> — the scan was stopped or interrupted.
+        Re-scan to get complete data.
+      </div>`;
+    }
+
+    html += `<div class="section-heading" style="display:flex;align-items:center;gap:10px;">
       Results for <span style="color:var(--red);margin-left:4px">${(surname||'').toUpperCase()}</span>
-      ${from_cache ? '<span class="cached-badge">⚡ Cached</span>' : ''}
+      ${from_cache&&!isPartial ? '<span class="cached-badge">⚡ Cached</span>' : ''}
+      ${profiles.length > 0 ? `<button class="btn-pdf" onclick="downloadPDF()" style="margin-left:auto">📄 Download PDF</button>` : ''}
     </div>`;
 
     html += `<div class="list-header col-grid">
-      <div>Name</div><div>Phone</div><div>DOB</div><div>Age</div>
+      <div>#&nbsp;Name</div><div>Phone</div><div>DOB</div><div>Age</div>
       <div>Medicaid ID</div><div>Enrollment</div><div>Screenings</div><div>Pg</div>
     </div>`;
+
+    // Serial counters
+    let familySerial = 1;
+    let soloSerial   = 1;
 
     for (const [phone, members] of families) {
       const safePhone = phone.replace(/'/g, "\\'");
       html += `<div class="family-group">
         <div class="family-group-header">
+          <span class="serial-badge family-serial">F${familySerial}</span>
           <div class="family-dot"></div>
           Family Group &nbsp;·&nbsp;
           <span class="family-phone">${phone}</span>
           <span class="fam-count">${members.length}</span>
           <button class="fam-copy" onclick="copyPhone('${safePhone}', null)">📋 Copy #</button>
         </div>`;
-      for (const p of members) html += renderPersonRow(p, false);
+      for (const p of members) html += renderPersonRow(p, false, null);
       html += '</div>';
+      familySerial++;
     }
 
     for (const [, members] of solos) {
-      html += '<div class="solo-group">' + renderPersonRow(members[0], true) + '</div>';
+      html += '<div class="solo-group">' + renderPersonRow(members[0], true, soloSerial) + '</div>';
+      soloSerial++;
     }
 
     if (filtered.length === 0) {
@@ -854,9 +1029,9 @@
 
     document.getElementById('results').innerHTML = html;
 
-    // Re-apply copy-active highlight after each re-render
+    // Re-apply copy highlight after re-render
     if (activeCopyRowId !== null) {
-      document.querySelectorAll('.person-row[data-row-id]').forEach(el => {
+      document.querySelectorAll('.person-row').forEach(el => {
         if (el.dataset.rowId === activeCopyRowId) el.classList.add('copy-active');
       });
     }
@@ -864,12 +1039,10 @@
 
   function renderFailed(failed) {
     let html = `<div class="failed-section">
-      <div class="failed-header">⚠️ ${failed.length} profile${failed.length > 1 ? 's' : ''} failed to load</div>`;
+      <div class="failed-header">⚠️ ${failed.length} profile${failed.length>1?'s':''} failed to load</div>`;
     for (const f of failed) {
-      html += `<div class="failed-row">
-        <div class="failed-name">${f.name}</div>
-        <div class="failed-err">${f.error || 'Unknown error'}</div>
-      </div>`;
+      html += `<div class="failed-row"><div class="failed-name">${f.name}</div>
+        <div class="failed-err">${f.error||'Unknown error'}</div></div>`;
     }
     html += '</div>';
     document.getElementById('results').innerHTML += html;
@@ -878,119 +1051,105 @@
   function calcAge(dob) {
     if (!dob) return '—';
     const parts = dob.split('/');
-    if (parts.length !== 3) return '—';
-    const birth = new Date(+parts[2], +parts[0] - 1, +parts[1]);
+    if (parts.length!==3) return '—';
+    const birth = new Date(+parts[2], +parts[0]-1, +parts[1]);
     if (isNaN(birth)) return '—';
     const today = new Date();
     let age = today.getFullYear() - birth.getFullYear();
     const m = today.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-    return age >= 0 ? age : '—';
+    if (m<0||(m===0&&today.getDate()<birth.getDate())) age--;
+    return age>=0 ? age : '—';
   }
 
-  function renderPersonRow(p, showPhoneCopy) {
+  // soloSerial = null for family members, number for solos
+  function renderPersonRow(p, showPhoneCopy, soloSerial) {
     const notes = getNotes();
+    const rowId = p.uuid || (p.name+'|'+(p.dob||'')+'|'+(p.page||''));
+    const rowIdAttr = rowId.replace(/"/g,'&quot;');
+    const rowIdJs   = rowId.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 
+    // Enrollment badge
     let enrollBadge = '<span class="enroll-loading">Loading...</span>';
     if (p.checked) {
-      const enrollUrl = p.uuid ? `https://app.uniteus.io/facesheet/${p.uuid}/profile` : '#';
+      const eUrl = p.uuid ? `https://app.uniteus.io/facesheet/${p.uuid}/profile` : '#';
       enrollBadge = p.any_enrolled
-        ? `<a href="${enrollUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="enroll-yes" style="cursor:pointer">✓ Enrolled</span></a>`
-        : `<a href="${enrollUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="enroll-no" style="cursor:pointer">Not Enrolled</span></a>`;
+        ? `<a href="${eUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="enroll-yes">✓ Enrolled</span></a>`
+        : `<a href="${eUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="enroll-no">Not Enrolled</span></a>`;
     }
 
+    // Screening badge — 0 = GREEN, 1+ = RED
     let screenBadge = '<span class="screen-loading">Loading...</span>';
     if (p.checked) {
-      const screenUrl = p.uuid ? `https://app.uniteus.io/facesheet/${p.uuid}/screenings` : '#';
+      const sUrl = p.uuid ? `https://app.uniteus.io/facesheet/${p.uuid}/screenings` : '#';
       screenBadge = p.zero_screening
-        ? `<a href="${screenUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="screen-zero" style="cursor:pointer">0 Screenings</span></a>`
-        : `<a href="${screenUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="screen-has" style="cursor:pointer">${p.screening_count || '?'}</span></a>`;
+        ? `<a href="${sUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="screen-zero">✓ 0 Screenings</span></a>`
+        : `<a href="${sUrl}" target="_blank" rel="noopener" style="text-decoration:none"><span class="screen-has">${p.screening_count||'?'}</span></a>`;
     }
 
-    // ── Determine row color class (priority: not_enrolled > has_screenings > priority/amber)
-    // copy-active is applied dynamically via JS on top of these
-    let rowColorClass = '';
+    // Row color class
+    let rowClass = '';
     if (p.checked) {
-      if (!p.any_enrolled) {
-        rowColorClass = ' row-not-enrolled';      // Solid RED — Not Enrolled
-      } else if (!p.zero_screening) {
-        rowColorClass = ' row-has-screenings';    // Solid TEAL — Has 1+ screenings
-      } else {
-        rowColorClass = ' priority';              // Amber — Enrolled, 0 screenings (target)
-      }
+      if (!p.any_enrolled) rowClass = ' row-not-enrolled';
+      else if (!p.zero_screening) rowClass = ' row-has-screenings';
+      else rowClass = ' priority';
     }
 
-    const age   = calcAge(p.dob);
-    const mID   = p.member_id || '—';
+    const age  = calcAge(p.dob);
+    const mID  = p.member_id || '—';
+    const sn   = p.name.replace(/'/g,"\\'");
+    const sdob = (p.dob||'').replace(/'/g,"\\'");
+    const sph  = (p.raw_phone||'').replace(/'/g,"\\'");
+    const sid  = mID.replace(/'/g,"\\'");
 
-    // Unique row ID: use UUID when available (most accurate), fall back to name+dob combo
-    const rowId = p.uuid || (p.name + '|' + (p.dob || '') + '|' + (p.page || ''));
-    // Escape for data-row-id HTML attribute and JS string
-    const rowIdAttr = rowId.replace(/"/g, '&quot;');
-    const rowIdJs   = rowId.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    // Serial number display in name column
+    const serialHtml = soloSerial !== null
+      ? `<span class="serial-badge solo-serial" style="margin-right:5px;flex-shrink:0">#${soloSerial}</span>`
+      : '';
 
-    const safeName  = p.name.replace(/'/g, "\\'");
-    const safeDob   = (p.dob || '').replace(/'/g, "\\'");
-    const safePhone = (p.raw_phone || '').replace(/'/g, "\\'");
-    const safeID    = mID.replace(/'/g, "\\'");
-
-    return `<div class="person-row col-grid${rowColorClass}" data-row-id="${rowIdAttr}">
+    return `<div class="person-row col-grid${rowClass}" data-row-id="${rowIdAttr}">
       <div class="person-name">
+        ${serialHtml}
         ${p.uuid
-          ? `<a href="https://app.uniteus.io/facesheet/${p.uuid}/" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;border-bottom:1.5px solid var(--primary-mid);" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='inherit'">${p.name}</a>`
+          ? `<a href="https://app.uniteus.io/facesheet/${p.uuid}/" target="_blank" rel="noopener"
+               style="color:inherit;text-decoration:none;border-bottom:1.5px solid var(--primary-mid);"
+               onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='inherit'">${p.name}</a>`
           : p.name
         }
-        <button class="cp" onclick="copyText('${safeName}','name','${rowIdJs}')">copy</button>
+        <button class="cp" onclick="copyText('${sn}','name','${rowIdJs}')">copy</button>
       </div>
       <div class="person-phone">
-        ${p.raw_phone || '—'}
-        ${showPhoneCopy && p.raw_phone ? `<button class="cp" onclick="copyPhone('${safePhone}','${rowIdJs}')">copy</button>` : ''}
+        ${p.raw_phone||'—'}
+        ${showPhoneCopy&&p.raw_phone?`<button class="cp" onclick="copyPhone('${sph}','${rowIdJs}')">copy</button>`:''}
       </div>
       <div class="person-dob">
-        ${p.dob || '—'}
-        ${p.dob ? `<button class="cp" onclick="copyText('${safeDob}','DOB','${rowIdJs}')">copy</button>` : ''}
+        ${p.dob||'—'}
+        ${p.dob?`<button class="cp" onclick="copyText('${sdob}','DOB','${rowIdJs}')">copy</button>`:''}
       </div>
-      <div class="person-age">${age !== '—' ? age + ' yr' : '—'}</div>
+      <div class="person-age">${age!=='—'?age+' yr':'—'}</div>
       <div style="font-size:0.83rem;color:var(--text);display:flex;align-items:center;justify-content:center;gap:4px;">
         <span>${mID}</span>
-        ${mID !== '—' ? `<button class="cp" onclick="copyText('${safeID}','ID','${rowIdJs}')">copy</button>` : ''}
+        ${mID!=='—'?`<button class="cp" onclick="copyText('${sid}','ID','${rowIdJs}')">copy</button>`:''}
       </div>
       <div>${enrollBadge}</div>
       <div>${screenBadge}</div>
       <div style="display:flex;align-items:center;justify-content:center;gap:4px;">
         <span class="pg-badge">${p.page}</span>
-        ${p.uuid ? `<button class="note-btn ${notes[p.uuid] ? 'has-note' : ''}" onclick="openNote('${p.uuid}','${safeName}')">
-          ${notes[p.uuid] ? '📝' : '+'} note
-        </button>` : ''}
+        ${p.uuid?`<button class="note-btn ${notes[p.uuid]?'has-note':''}" onclick="openNote('${p.uuid}','${sn}')">
+          ${notes[p.uuid]?'📝':'+'} note
+        </button>`:''}
       </div>
     </div>
-    ${notes[p.uuid] ? `<div class="note-text col-grid" style="display:block">📝 ${notes[p.uuid]}</div>` : ''}`;
+    ${notes[p.uuid]?`<div class="note-text col-grid" style="display:block">📝 ${notes[p.uuid]}</div>`:''}`;
   }
 
-  document.getElementById('scan-input').addEventListener('keydown', e => { if (e.key === 'Enter') startScan(); });
-  setInterval(fetchResults, 4000);
+  // ════════════════════════════════════════════
+  // Per-Profile Notes — AUTO-SAVE on typing
+  // ════════════════════════════════════════════
+  let activeNoteUuid  = null;
+  let noteAutoSaveTimer = null;
 
-  fetch('/history').then(r => r.json()).then(d => {
-    const count = d.history ? d.history.length : 0;
-    const badge = document.getElementById('history-badge');
-    badge.textContent = count;
-    badge.style.display = count > 0 ? 'inline' : 'none';
-  });
-
-  // ── Scroll-to-top button ──
-  window.addEventListener('scroll', () => {
-    const btn = document.getElementById('scroll-top-btn');
-    if (window.scrollY > 300) btn.classList.add('visible');
-    else btn.classList.remove('visible');
-  });
-
-  // ── Per-member Notes ──
-  let activeNoteUuid = null;
-
-  function countWords(text) { return text.trim() === '' ? 0 : text.trim().split(/\s+/).length; }
-  function getNotes() {
-    try { return JSON.parse(localStorage.getItem('uu_notes') || '{}'); } catch { return {}; }
-  }
+  function countWords(text) { return text.trim()===''?0:text.trim().split(/\s+/).length; }
+  function getNotes() { try{return JSON.parse(localStorage.getItem('uu_notes')||'{}');}catch{return{};} }
   function saveNotes(notes) { localStorage.setItem('uu_notes', JSON.stringify(notes)); }
 
   function openNote(uuid, name) {
@@ -1002,11 +1161,12 @@
     document.getElementById('note-delete-btn').style.display = existing ? 'inline-block' : 'none';
     document.getElementById('note-popup').style.display = 'flex';
     onNoteInput();
-    setTimeout(() => document.getElementById('note-textarea').focus(), 50);
+    setTimeout(()=>document.getElementById('note-textarea').focus(), 50);
   }
   function closeNote() {
     document.getElementById('note-popup').style.display = 'none';
     activeNoteUuid = null;
+    if (noteAutoSaveTimer) { clearTimeout(noteAutoSaveTimer); noteAutoSaveTimer = null; }
   }
   function onNoteInput() {
     const text  = document.getElementById('note-textarea').value;
@@ -1016,11 +1176,34 @@
     counter.textContent = `${words} / 50 words`;
     counter.className   = words > 50 ? 'note-word-count over' : 'note-word-count';
     saveBtn.disabled    = words > 50;
+
+    // Auto-save after 700ms of inactivity
+    if (noteAutoSaveTimer) clearTimeout(noteAutoSaveTimer);
+    if (activeNoteUuid && words <= 50) {
+      noteAutoSaveTimer = setTimeout(() => {
+        const notes = getNotes();
+        const trimmed = text.trim();
+        if (trimmed) { notes[activeNoteUuid] = trimmed; } else { delete notes[activeNoteUuid]; }
+        saveNotes(notes);
+        const ind = document.getElementById('note-autosave-indicator');
+        ind.classList.add('show');
+        setTimeout(() => ind.classList.remove('show'), 1500);
+        // Update the "has-note" indicator on the button without closing
+        document.querySelectorAll(`.note-btn`).forEach(btn => {
+          const rid = btn.closest('.person-row')?.dataset?.rowId;
+          if (!rid) return;
+          const pUUID = currentData?.profiles?.find(p => (p.uuid||'') === activeNoteUuid)?.uuid;
+          if (rid === pUUID || rid.startsWith(pUUID)) {
+            btn.classList.toggle('has-note', !!trimmed);
+            btn.innerHTML = (trimmed ? '📝' : '+') + ' note';
+          }
+        });
+      }, 700);
+    }
   }
   function saveNote() {
     const text  = document.getElementById('note-textarea').value.trim();
-    const words = countWords(text);
-    if (words > 50) return;
+    if (countWords(text) > 50) return;
     const notes = getNotes();
     if (text) { notes[activeNoteUuid] = text; } else { delete notes[activeNoteUuid]; }
     saveNotes(notes);
@@ -1037,27 +1220,190 @@
     showToast('🗑 Note deleted');
   }
 
+  // ════════════════════════════════════════════
+  // PDF Download — client-side via jsPDF
+  // ════════════════════════════════════════════
+  async function downloadPDF() {
+    // Always fetch freshest data from server so PDF works after page refresh
+    // (currentData may be null or stale if the page was just loaded).
+    let exportScan = currentData;
+    try {
+      showToast('⏳ Preparing PDF...');
+      const res = await fetch('/export-data');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.scan && json.scan.profiles && json.scan.profiles.length > 0) {
+          exportScan = json.scan;
+        }
+      }
+    } catch(e) { /* fall back to currentData */ }
+
+    if (!exportScan || !exportScan.profiles || exportScan.profiles.length === 0) {
+      showToast('No data to export'); return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const notes = getNotes();
+    const { surname, profiles, phone_groups, total, scanned, partial } = exportScan;
+    const pg = phone_groups || {};
+
+    const W = 210, M = 14, CW = W - M*2;
+    let y = M;
+
+    const checkY = (needed=8) => { if (y + needed > 280) { doc.addPage(); y = M; } };
+
+    // ── Title
+    doc.setFillColor(28, 46, 74);
+    doc.rect(0, 0, W, 30, 'F');
+    doc.setTextColor(235, 240, 255);
+    doc.setFontSize(16); doc.setFont('helvetica','bold');
+    doc.text(`Screening Results - ${(surname||'').toUpperCase()}`, M, 12);
+    doc.setFontSize(8.5); doc.setFont('helvetica','normal');
+    doc.setTextColor(155, 180, 216);
+    const now = new Date().toLocaleString();
+    doc.text(`Generated: ${now}  |  ${scanned||total} of ${total} profiles`, M, 21);
+    if (partial) doc.text('! PARTIAL RESULTS - scan was interrupted', M, 27);
+    y = 38;
+
+    // ── Summary box
+    doc.setFillColor(38, 58, 92);
+    doc.roundedRect(M, y, CW, 14, 2, 2, 'F');
+    doc.setTextColor(235,240,255); doc.setFontSize(8); doc.setFont('helvetica','bold');
+    const enrolled0 = profiles.filter(p=>p.checked&&p.any_enrolled&&p.zero_screening).length;
+    const failed    = profiles.filter(p=>p.error&&p.error!=='No UUID').length;
+    const fams      = Object.values(pg).filter(g=>g.length>1).length;
+    doc.text(`Total: ${total}   Families: ${fams}   Need Screening: ${enrolled0}   Failed: ${failed}`, M+4, y+6);
+    y += 20;
+
+    // ── Helper: render one profile row
+    const renderProfile = (p, serialLabel) => {
+      const age    = (() => {
+        if (!p.dob) return '—';
+        const pts = p.dob.split('/'); if(pts.length!==3) return '—';
+        const b = new Date(+pts[2],+pts[0]-1,+pts[1]); if(isNaN(b)) return '—';
+        const t = new Date(); let a = t.getFullYear()-b.getFullYear();
+        const mm=t.getMonth()-b.getMonth();
+        if(mm<0||(mm===0&&t.getDate()<b.getDate())) a--;
+        return a>=0?a+'yr':'—';
+      })();
+      const enroll  = !p.checked ? 'Pending' : p.any_enrolled ? 'Enrolled' : 'Not Enrolled';
+      const screen  = !p.checked ? 'Pending' : (p.screening_count || '0 Screenings');
+      const mID     = p.member_id || 'N/A';
+      const note    = p.uuid ? (notes[p.uuid] || '') : '';
+
+      checkY(note ? 18 : 13);
+
+      // Row background
+      if (!p.any_enrolled && p.checked)     doc.setFillColor(80, 20, 20);
+      else if (!p.zero_screening && p.checked) doc.setFillColor(15, 55, 60);
+      else if (p.checked)                   doc.setFillColor(38, 58, 92);
+      else                                  doc.setFillColor(30, 46, 70);
+      doc.roundedRect(M, y, CW, note?17:12, 1.5, 1.5, 'F');
+
+      // Serial + Name
+      doc.setTextColor(160,176,255); doc.setFontSize(6.5); doc.setFont('helvetica','bold');
+      doc.text(serialLabel, M+2, y+4.5);
+      doc.setTextColor(235,240,255); doc.setFontSize(8); doc.setFont('helvetica','bold');
+      doc.text(p.name, M+12, y+4.5, {maxWidth: CW*0.35});
+
+      // Phone / DOB / Age
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(155,180,216);
+      doc.text(p.raw_phone||'-', M+CW*0.42, y+4.5);
+      doc.text((p.dob||'-')+' '+age, M+CW*0.60, y+4.5);
+
+      // Member ID
+      doc.setTextColor(235,240,255); doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
+      doc.text('ID: '+mID, M+2, y+9.5);
+
+      // Enrollment
+      if (p.checked) {
+        if (p.any_enrolled) doc.setTextColor(74,222,160); else doc.setTextColor(255,107,128);
+        doc.text(enroll, M+CW*0.42, y+9.5);
+      }
+
+      // Screenings
+      if (p.checked) {
+        if (p.zero_screening) doc.setTextColor(74,222,160); else doc.setTextColor(255,107,128);
+        doc.text(screen, M+CW*0.68, y+9.5);
+      }
+
+      // Note
+      if (note) {
+        doc.setFont('helvetica','italic'); doc.setFontSize(7); doc.setTextColor(255,189,63);
+        const lines = doc.splitTextToSize('Note: '+note, CW-4);
+        doc.text(lines[0], M+2, y+14);
+      }
+
+      y += (note ? 19 : 14);
+    };
+
+    // ── Group families
+    let fSerial = 1;
+    const familyPhones = Object.keys(pg).filter(ph=>pg[ph].length>1);
+    const rendered = new Set();
+
+    for (const phone of familyPhones) {
+      const members = profiles.filter(p=>p.raw_phone===phone);
+      if (!members.length) continue;
+
+      checkY(10);
+      doc.setFillColor(13, 80, 94);
+      doc.roundedRect(M, y, CW, 8, 1.5, 1.5, 'F');
+      doc.setTextColor(93, 232, 248); doc.setFontSize(8); doc.setFont('helvetica','bold');
+      doc.text(`F${fSerial}  Family Group | ${phone} (${members.length} members)`, M+3, y+5.2);
+      y += 10; fSerial++;
+
+      for (const p of members) { renderProfile(p, ''); rendered.add(p.name+'|'+p.dob); }
+      y += 2;
+    }
+
+    // ── Solo profiles
+    let sSerial = 1;
+    for (const p of profiles) {
+      if (rendered.has(p.name+'|'+p.dob)) continue;
+      renderProfile(p, '#'+sSerial);
+      sSerial++;
+    }
+
+    // ── Page numbers
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i=1; i<=pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(7); doc.setFont('helvetica','normal');
+      doc.setTextColor(96,128,168);
+      doc.text(`Page ${i} of ${pageCount}  |  Unite Us Screening Helper`, W/2, 292, {align:'center'});
+    }
+
+    const dateStr = new Date().toISOString().slice(0,10);
+    doc.save(`screening_${(surname||'results').toLowerCase()}_${dateStr}.pdf`);
+    showToast('📄 PDF downloaded');
+  }
+
+  // ════════════════════════════════════════════
+  // Scroll & Keyboard
+  // ════════════════════════════════════════════
+  document.getElementById('scan-input').addEventListener('keydown', e => { if (e.key==='Enter') startScan(); });
+  fetchResults();  // load cached/partial results immediately on page load
+  setInterval(fetchResults, 4000);
+
+  window.addEventListener('scroll', () => {
+    const btn = document.getElementById('scroll-top-btn');
+    if (window.scrollY > 300) btn.classList.add('visible');
+    else btn.classList.remove('visible');
+  });
+
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { closeNote(); closeNotepad(); }
+    if (e.key === 'Escape') { closeNote(); closeNotepad(); closeHistory(); closeSettings(); }
+  });
+
+  // Init history badge
+  fetch('/history').then(r=>r.json()).then(d=>{
+    const count = d.history ? d.history.length : 0;
+    const badge = document.getElementById('history-badge');
+    badge.textContent = count;
+    badge.style.display = count > 0 ? 'inline' : 'none';
   });
 </script>
-
-<button class="scroll-top-btn" id="scroll-top-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">↑</button>
-
-<!-- Per-member note popup (data logic unchanged) -->
-<div class="note-popup" id="note-popup" style="display:none" onclick="if(event.target===this)closeNote()">
-  <div class="note-box">
-    <div class="note-box-header">
-      <div class="note-box-name" id="note-popup-name"></div>
-      <button class="note-box-close" onclick="closeNote()">✕</button>
-    </div>
-    <textarea class="note-textarea" id="note-textarea" placeholder="Add a note... (max 50 words)" oninput="onNoteInput()"></textarea>
-    <div class="note-word-count" id="note-word-count">0 / 50 words</div>
-    <div class="note-actions">
-      <button class="note-save" id="note-save-btn" onclick="saveNote()">Save Note</button>
-      <button class="note-delete" id="note-delete-btn" onclick="deleteNote()" style="display:none">Delete</button>
-    </div>
-  </div>
-</div>
 </body>
 </html>

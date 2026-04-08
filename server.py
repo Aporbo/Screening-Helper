@@ -5,6 +5,7 @@ Includes:
 1. Cookie-based Authentication (via ACCESS_TOKEN)
 2. Static file serving for style.css
 3. JSON API for live scan data
+4. /export-data endpoint — returns full scan data for client-side PDF generation
 """
 
 import json
@@ -50,7 +51,6 @@ class Handler(BaseHTTPRequestHandler):
         # Main Entry Point
         if path == "/":
             if user_key == ACCESS_TOKEN:
-                # Valid key in URL -> Set cookie and show page
                 self.send_response(200)
                 self.send_header("Set-Cookie", f"access_token={ACCESS_TOKEN}; Path=/; Max-Age=86400; HttpOnly")
                 self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -60,15 +60,13 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(body)
                 return
             elif has_valid_cookie:
-                # Already has cookie -> Show page
                 self._html(_load_html())
                 return
             else:
-                # No credentials -> 401 Unauthorized
                 self._unauthorized()
                 return
 
-        # Serve CSS (Always allowed so login/error screens look right)
+        # Serve CSS
         elif path == "/style.css":
             if os.path.exists(_CSS_PATH):
                 self.send_response(200)
@@ -84,28 +82,59 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         # --- PROTECTED API ENDPOINTS ---
-        # All background calls (/data, /scan, etc.) require the cookie or key
         if not (has_valid_cookie or user_key == ACCESS_TOKEN):
             self._unauthorized()
             return
 
         if path == "/data":
+            scan = state.scan_results if state.scan_results else None
+
+            # If no live scan_results in memory (e.g. after server restart),
+            # seed from the most-recently-cached entry so a page refresh
+            # still shows the last complete scan results.
+            if not scan and state.scan_cache:
+                try:
+                    latest = max(
+                        state.scan_cache.values(),
+                        key=lambda v: v.get("cached_at", 0),
+                    )
+                    state.scan_results = latest
+                    scan = latest
+                    if not state.status_message or state.status_message == "Waiting for scan request...":
+                        total   = latest.get("total", 0)
+                        surname = latest.get("surname", "")
+                        state.status_message = (
+                            f"Done — loaded {total} profiles for '{surname}' (cached)"
+                        )
+                except Exception:
+                    pass
+
             self._json({
                 "status":    state.status_message,
                 "searching": state.is_searching,
-                "scan":      state.scan_results if state.scan_results else None,
+                "scan":      scan,
             })
 
         elif path == "/scan":
             surname = unquote(qs.get("q", [""])[0]).strip()
             if surname:
-                # Clear previous results before starting new scan
-                state.scan_results = {} 
+                state.scan_results = {}
+                # Remove this surname from cache so a fresh live scan is forced.
+                # Without this, run_scan() sees the cache entry and returns
+                # stale/partial results instead of starting a new scan.
+                cache_key = surname.lower().strip()
+                if cache_key in state.scan_cache:
+                    del state.scan_cache[cache_key]
+                    persistence.save_cache()
                 state.search_queue.append(("scan", surname))
             self._json({"ok": True})
 
         elif path == "/stop":
-            state.stop_flag = True
+            # Set flag immediately — scanner checks this between profiles
+            # and inside _wait_for_page, so stops within ~1-2 seconds
+            print("⛔ Scan stopped from browser.")
+            state.stop_flag    = True
+            state.is_searching = False
             self._json({"ok": True})
 
         elif path == "/creds":
@@ -117,6 +146,29 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/clear-cache":
             persistence.clear_cache()
             self._json({"ok": True})
+
+        elif path == "/delete-cache":
+            surname = unquote(qs.get("q", [""])[0]).strip()
+            if surname:
+                cache_key = surname.lower().strip()
+                if cache_key in state.scan_cache:
+                    del state.scan_cache[cache_key]
+                    persistence.save_cache()
+                # Also remove from history
+                state.search_history = [
+                    h for h in state.search_history
+                    if h.get("surname", "").lower() != cache_key
+                ]
+                persistence.save_history()
+            self._json({"ok": True})
+
+        elif path == "/export-data":
+            # Returns full current scan data for client-side PDF generation.
+            # Includes profiles, phone_groups, and partial flag.
+            self._json({
+                "scan":    state.scan_results if state.scan_results else {},
+                "status":  state.status_message,
+            })
 
         else:
             self.send_response(404)
